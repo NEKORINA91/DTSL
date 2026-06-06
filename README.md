@@ -17,7 +17,7 @@ Open terminal/cmd inside this folder:
 npm install
 ```
 
-### Step 4 — Run the server
+### Step 4: Run the server
 ```
 node server.js
 ```
