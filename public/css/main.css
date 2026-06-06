@@ -1,0 +1,169 @@
+/* ═══════════════════════════════════════════════════
+   DTSL — Digital Transport Sri Lanka
+   main.css — Shared styles across all pages
+   ═══════════════════════════════════════════════════ */
+
+*, ::before, ::after { box-sizing: border-box; }
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  margin: 0;
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+/* ── INPUTS ─────────────────────────────────────── */
+.inp {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  font-size: .875rem;
+  outline: none;
+  background: white;
+  font-family: inherit;
+}
+.inp:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.15);
+}
+
+/* ── BUTTONS ────────────────────────────────────── */
+.btn {
+  padding: .45rem 1.1rem;
+  border-radius: .5rem;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, transform .1s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary  { background: #4f46e5; color: #fff; }
+.btn-primary:hover  { background: #4338ca; }
+.btn-teal     { background: #0d9488; color: #fff; }
+.btn-teal:hover     { background: #0f766e; }
+.btn-orange   { background: #ea580c; color: #fff; }
+.btn-orange:hover   { background: #c2410c; }
+.btn-red      { background: #fee2e2; color: #dc2626; }
+.btn-red:hover      { background: #fecaca; }
+.btn-gray     { background: #f3f4f6; color: #374151; }
+.btn-gray:hover     { background: #e5e7eb; }
+.btn-sm { padding: .28rem .7rem; font-size: .72rem; }
+.btn-full { width: 100%; }
+
+/* ── CARDS ──────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: .75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
+
+/* ── BADGES ─────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .12rem .55rem;
+  border-radius: 9999px;
+  font-size: .68rem;
+  font-weight: 700;
+}
+.b-blue   { background: #dbeafe; color: #1d4ed8; }
+.b-green  { background: #dcfce7; color: #166534; }
+.b-yellow { background: #fef9c3; color: #854d0e; }
+.b-gray   { background: #f3f4f6; color: #4b5563; }
+.b-red    { background: #fee2e2; color: #dc2626; }
+.b-orange { background: #ffedd5; color: #c2410c; }
+.b-purple { background: #f3e8ff; color: #7e22ce; }
+.b-teal   { background: #ccfbf1; color: #0f766e; }
+.b-indigo { background: #e0e7ff; color: #3730a3; }
+.b-pink   { background: #fce7f3; color: #be185d; }
+
+/* ── TABLE ──────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+th {
+  padding: .65rem 1rem;
+  text-align: left;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+  background: #f9fafb;
+  white-space: nowrap;
+}
+td {
+  padding: .65rem 1rem;
+  font-size: .8rem;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+tr:hover td { background: #fafafa; }
+
+/* ── MODAL ──────────────────────────────────────── */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal.open { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.75rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ── FORM LABEL ─────────────────────────────────── */
+.label {
+  display: block;
+  font-size: .75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: .3rem;
+}
+
+/* ── SEARCH BAR ─────────────────────────────────── */
+.search-bar {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.search-bar input { flex: 1; }
+
+/* ── ALERTS ─────────────────────────────────────── */
+.alert-err { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
+.alert-ok  { background:#f0fdf4; border:1px solid #86efac; color:#166534; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
+.alert-warn{ background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
+
+/* ── ANIMATIONS ─────────────────────────────────── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+@keyframes sosPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)} 50%{box-shadow:0 0 0 16px rgba(220,38,38,0)} }
+.sos-active { animation: sosPulse 1.5s infinite; }
+
+/* ── UTILITIES ──────────────────────────────────── */
+.hidden   { display: none !important; }
+.flex     { display: flex; }
+.grid     { display: grid; }
+.w-full   { width: 100%; }
+.h-full   { height: 100%; }
+.text-center { text-align: center; }
+.font-bold   { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.cursor-pointer { cursor: pointer; }
+.overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
+.overflow-y-auto { overflow-y: auto; }
+.divide-y > * + * { border-top: 1px solid #f3f4f6; }
+.truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.whitespace-nowrap { white-space: nowrap; }

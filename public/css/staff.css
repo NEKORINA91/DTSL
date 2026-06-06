@@ -1,0 +1,143 @@
+/* ═══════════════════════════════════════════════════
+   DTSL — staff.css
+   Staff portal specific styles
+   ═══════════════════════════════════════════════════ */
+
+/* ── SIDEBAR ────────────────────────────────────── */
+.sidebar {
+  position: fixed;
+  inset-y: 0;
+  left: 0;
+  width: 14rem;
+  background: #134e4a;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+  box-shadow: 2px 0 8px rgba(0,0,0,.15);
+}
+.sidebar-logo { padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.1); }
+.sidebar-logo h1 { color: #fff; font-weight: 800; font-size: 1rem; margin: 0; }
+.sidebar-logo p  { color: rgba(153,246,228,.7); font-size: .72rem; margin: .15rem 0 0; }
+.sidebar-nav { flex: 1; padding: .6rem; }
+.sidebar-footer { padding: .75rem 1rem; border-top: 1px solid rgba(255,255,255,.1); }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .55rem .85rem;
+  border-radius: .5rem;
+  cursor: pointer;
+  color: rgba(153,246,228,.75);
+  font-size: .82rem;
+  font-weight: 500;
+  transition: all .15s;
+  user-select: none;
+  margin-bottom: .15rem;
+}
+.nav-item:hover, .nav-item.active {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+}
+
+/* ── MAIN CONTENT ───────────────────────────────── */
+.main-content { margin-left: 14rem; padding: 1.5rem; min-height: 100vh; }
+
+/* ── SCHEDULE CARD ──────────────────────────────── */
+.schedule-card {
+  border-left: 4px solid #0d9488;
+  padding: 1.25rem;
+  margin-bottom: .75rem;
+}
+.schedule-card.emergency { border-left-color: #dc2626; }
+
+/* ── LOCATION INDICATOR ─────────────────────────── */
+.loc-dot {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 9999px;
+  background: #4ade80;
+  display: inline-block;
+  animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite;
+}
+
+/* ── SPEED DIAL ─────────────────────────────────── */
+.dial-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: 1.25rem .75rem;
+  border-radius: .75rem;
+  cursor: pointer;
+  border: none;
+  font-weight: 700;
+  font-size: .8rem;
+  text-align: center;
+  transition: .15s;
+  font-family: inherit;
+}
+.dial-btn:active { transform: scale(.96); }
+.dial-police     { background: #dbeafe; color: #1d4ed8; }
+.dial-police:hover     { background: #bfdbfe; }
+.dial-ambulance  { background: #fee2e2; color: #dc2626; }
+.dial-ambulance:hover  { background: #fecaca; }
+.dial-fire       { background: #ffedd5; color: #c2410c; }
+.dial-fire:hover       { background: #fed7aa; }
+.dial-repair     { background: #fef9c3; color: #854d0e; }
+.dial-repair:hover     { background: #fef08a; }
+.dial-depot      { background: #dcfce7; color: #166534; }
+.dial-depot:hover      { background: #bbf7d0; }
+.dial-fuel       { background: #f3e8ff; color: #7e22ce; }
+.dial-fuel:hover       { background: #e9d5ff; }
+
+/* ── SOS BUTTON ─────────────────────────────────── */
+.sos-btn {
+  width: 180px;
+  height: 180px;
+  border-radius: 9999px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  font-family: inherit;
+  transition: background .15s;
+  box-shadow: 0 8px 24px rgba(220,38,38,.4);
+}
+.sos-btn:hover { background: #b91c1c; }
+
+/* ── MAP SEARCH OVERLAY ─────────────────────────── */
+.map-search-overlay {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 320px;
+}
+.map-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: #fff;
+  border-radius: .75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  padding: .75rem;
+  font-size: .72rem;
+}
+.map-legend-item { display: flex; align-items: center; gap: .4rem; margin-bottom: .3rem; }
+.map-legend-item:last-child { margin-bottom: 0; }
+.legend-dot { width: .65rem; height: .65rem; border-radius: 9999px; display: inline-block; flex-shrink: 0; }
+
+/* ── EXPENSE TABLE ──────────────────────────────── */
+.exp-category-fuel        { background: #dbeafe; color: #1d4ed8; }
+.exp-category-toll        { background: #f3e8ff; color: #7e22ce; }
+.exp-category-maintenance { background: #ffedd5; color: #c2410c; }
+.exp-category-other       { background: #f3f4f6; color: #4b5563; }

@@ -1,0 +1,23 @@
+{
+  "name": "srmss_clean",
+  "version": "1.0.0",
+  "description": "Smart Route Management and Scheduling System",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "connect-flash": "^0.1.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "method-override": "^3.0.0",
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.4",
+    "pdfkit": "^0.18.0"
+  }
+}
