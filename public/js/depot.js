@@ -104,10 +104,30 @@ async function loadDash(){
   allScheds=await api('/api/depot/schedules');
   renderCal();
 
-  // ═══ FRIEND A — PASTE YOUR UTILISATION CHART HERE ═══
-  // Instructions: paste the renderUtilChart() call and its function below this line
-  // The data you need is already fetched: call api('/api/depot/analytics/utilisation')
-  // ═══════════════════════════════════════════════════
+  async function renderUtilChart() {
+  const data = await api('/api/admin/analytics/utilisation');
+  if (!data.length) return;
+  const wrap = document.getElementById('util-chart-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div class="card p-5 mb-5">
+      <p class="font-bold text-gray-700 mb-4">Vehicle Utilisation Rate</p>
+      ${data.slice(0, 8).map(b => {
+        const rate = b.total_trips > 0 ? Math.round((b.completed / b.total_trips) * 100) : 0;
+        const color = rate >= 70 ? '#16a34a' : rate >= 40 ? '#d97706' : '#dc2626';
+        return `<div style="margin-bottom:.65rem">
+          <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.2rem">
+            <span style="font-weight:600;color:#374151">🚌 ${b.reg_number}</span>
+            <span style="font-weight:700;color:${color}">${rate}% (${b.completed}/${b.total_trips} trips)</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden">
+            <div style="height:100%;width:${rate}%;background:${color};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+renderUtilChart();
 
 }
 
@@ -135,11 +155,27 @@ function renderStaff(data){
   }).join('')
   :'<tr><td colspan="9" style="text-align:center;padding:2rem;color:#9ca3af;">No staff found.</td></tr>';
 
-  // ═══ FRIEND A — PASTE YOUR LICENSE EXPIRY ALERT HERE ═══
-  // Instructions: after staff table renders, check for expiring licenses and show an alert banner
-  // Data available: allStaff array — each item has license_expiry, first_name, last_name
-  // Target element: id="staff-expiry-alert"
-  // ═══════════════════════════════════════════════════
+  const expiring = allStaff.filter(s => {
+  if (!s.license_expiry) return false;
+  const days = Math.ceil((new Date(s.license_expiry) - new Date()) / (1000*60*60*24));
+  return days <= 60;
+});
+const alertBox = document.getElementById('staff-expiry-alert');
+const alertList = document.getElementById('staff-expiry-list');
+if (expiring.length && alertBox && alertList) {
+  alertList.innerHTML = expiring.map(s => {
+    const days = Math.ceil((new Date(s.license_expiry) - new Date()) / (1000*60*60*24));
+    return `<div style="font-size:.78rem;padding:.3rem 0;border-bottom:1px solid #fee2e2">
+      <b>${s.first_name} ${s.last_name}</b> (${s.role}) — License ${s.license_id || '—'} 
+      <span style="color:${days < 0 ? '#dc2626' : '#d97706'};font-weight:700">
+        ${days < 0 ? 'EXPIRED' : 'expires in ' + days + ' days'} (${new Date(s.license_expiry).toLocaleDateString('en-GB')})
+      </span>
+    </div>`;
+  }).join('');
+  alertBox.classList.remove('hidden');
+} else if (alertBox) {
+  alertBox.classList.add('hidden');
+}
 }
 function filterStaff(){
   const v=q('staff-search').value.toLowerCase();
