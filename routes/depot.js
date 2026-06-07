@@ -287,4 +287,21 @@ router.post('/reports/generate', depotOnly, async (req,res) => {
   res.json({success:true,file:'/uploads/'+fname});
 });
 
+// fuel consumption per route
+router.get('/expenses/fuel-by-route', depotOnly, async (req,res) => {
+  const [rows] = await db.query(`
+    SELECT r.name AS route_name,
+           SUM(e.amount) AS total_fuel,
+           COUNT(DISTINCT s.bus_id) AS buses_used,
+           ROUND(SUM(e.amount) / COUNT(s.id), 2) AS avg_per_trip
+    FROM expense_receipts e
+    JOIN schedules s ON e.schedule_id = s.id
+    JOIN routes r ON s.route_id = r.id
+    JOIN buses b ON s.bus_id = b.id
+    WHERE b.depot_id = ? AND e.category = 'fuel'
+    GROUP BY r.id, r.name
+    ORDER BY total_fuel DESC`, [did(req)]);
+  res.json(rows);
+});
+
 module.exports = router;

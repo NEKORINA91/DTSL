@@ -484,7 +484,29 @@ async function loadMaint(){
   // Target element: id="fuel-chart-wrap"
   // Data format: [{month:'2025-01', total:45000}, ...]
   // ═══════════════════════════════════════════════════
+  // fuel by route
+const routeFuel = await api('/api/depot/expenses/fuel-by-route');
+if (routeFuel.length) {
+  const existing = document.getElementById('fuel-chart-wrap');
+  const routeDiv = document.createElement('div');
+  routeDiv.className = 'card p-5 mb-5';
+  routeDiv.innerHTML = `
+    <p class="font-bold text-gray-700 mb-1">Fuel Consumption by Route</p>
+    <p style="font-size:.72rem;color:#6b7280;margin-bottom:1rem">Identifies high-usage routes</p>
+    <table class="w-full" style="font-size:.8rem">
+      <thead><tr><th>Route</th><th>Total Fuel (LKR)</th><th>Avg per Trip</th><th>Buses Used</th></tr></thead>
+      <tbody>${routeFuel.map(r=>`<tr>
+        <td style="font-weight:600">${r.route_name}</td>
+        <td style="color:#c2410c;font-weight:700">LKR ${parseFloat(r.total_fuel).toLocaleString()}</td>
+        <td>LKR ${parseFloat(r.avg_per_trip).toLocaleString()}</td>
+        <td>${r.buses_used}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  if (existing) existing.after(routeDiv);
 }
+}
+
+
 function renderMaint(data){
   if(!data.length){q('maint-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:#9ca3af;">No maintenance logs.</td></tr>';return;}
   const grouped={};
