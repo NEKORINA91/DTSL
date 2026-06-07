@@ -5,18 +5,44 @@ const db      = require('../config/db');
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ? AND status = "active"', [email]);
-    if (!rows.length) return res.json({ success: false, message: 'Invalid email or password.' });
+    const { email, depot_code, password } = req.body;
+
+    // ── DEPOT LOGIN (depot_code + password) ──────────
+    if (depot_code) {
+      const [rows] = await db.query(
+        'SELECT * FROM depots WHERE depot_code=? AND status != "inactive"',
+        [depot_code.toUpperCase().trim()]
+      );
+      if (!rows.length) return res.json({ success:false, message:'Invalid depot ID or password.' });
+      const depot = rows[0];
+      const match = await bcrypt.compare(password, depot.password);
+      if (!match) return res.json({ success:false, message:'Invalid depot ID or password.' });
+      req.session.user = { id: depot.id, name: depot.name, role: 'depot', depot_id: depot.id, depot_code: depot.depot_code };
+      return res.json({ success:true, redirect:'/depot' });
+    }
+
+    // ── EMAIL LOGIN (superadmin / driver / conductor) ─
+    const [rows] = await db.query(
+      'SELECT * FROM users WHERE email=? AND status="active"', [email]
+    );
+    if (!rows.length) return res.json({ success:false, message:'Invalid email or password.' });
     const user  = rows[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.json({ success: false, message: 'Invalid email or password.' });
-    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
-    const redirects = { admin: '/admin', driver: '/staff', conductor: '/staff', customer: '/customer' };
-    res.json({ success: true, redirect: redirects[user.role] });
-  } catch (err) {
+    if (!match) return res.json({ success:false, message:'Invalid email or password.' });
+    req.session.user = {
+      id: user.id,
+      name: user.first_name+' '+user.last_name,
+      email: user.email,
+      role: user.role,
+      depot_id: user.depot_id
+    };
+    const redirects = { superadmin:'/superadmin', driver:'/staff', conductor:'/staff' };
+    const redirect  = redirects[user.role];
+    if (!redirect) return res.json({ success:false, message:'Access denied.' });
+    return res.json({ success:true, redirect });
+  } catch(err) {
     console.error(err);
-    res.json({ success: false, message: 'Server error.' });
+    res.json({ success:false, message:'Server error.' });
   }
 });
 
@@ -26,28 +52,3 @@ router.get('/logout', (req, res) => {
 });
 
 module.exports = router;
-
-// ── SIGNUP (customers only) ──────────────────────────────────
-router.post('/signup', async (req, res) => {
-  try {
-    const { first_name, last_name, email, phone, password } = req.body;
-    if (!first_name || !last_name || !email || !password)
-      return res.json({ success: false, message: 'All fields are required.' });
-    if (password.length < 6)
-      return res.json({ success: false, message: 'Password must be at least 6 characters.' });
-    const [existing] = await db.query('SELECT id FROM users WHERE email=?', [email]);
-    if (existing.length)
-      return res.json({ success: false, message: 'An account with this email already exists.' });
-    const hash = await bcrypt.hash(password, 10);
-    const [r] = await db.query(
-      'INSERT INTO users (first_name,last_name,email,phone,password,role) VALUES (?,?,?,?,?,?)',
-      [first_name, last_name, email, phone||'', hash, 'customer']
-    );
-    req.session.user = { id: r.insertId, name: first_name+' '+last_name, email, role: 'customer' };
-    res.json({ success: true });
-  } catch(err) {
-    if (err.code === 'ER_DUP_ENTRY')
-      return res.json({ success: false, message: 'An account with this email already exists.' });
-    res.json({ success: false, message: 'Server error. Please try again.' });
-  }
-});

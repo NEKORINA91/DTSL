@@ -1,11 +1,8 @@
-function isLoggedIn(req, res, next) {
-  if (req.session && req.session.user) return next();
-  res.redirect('/login');
-}
 function requireRole(...roles) {
   return (req, res, next) => {
-    if (req.session && req.session.user && roles.includes(req.session.user.role)) return next();
-    res.redirect('/login');
+    if (!req.session.user) return res.status(401).json({ error: 'Not logged in' });
+    if (!roles.includes(req.session.user.role)) return res.status(403).json({ error: 'Access denied' });
+    next();
   };
 }
-module.exports = { isLoggedIn, requireRole };
+module.exports = { requireRole };

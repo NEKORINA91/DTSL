@@ -66,3 +66,31 @@ router.get('/mybus', only, async (req,res) => {
   const [[bus]] = await db.query('SELECT * FROM buses WHERE id=?', [user.assigned_bus_id]);
   res.json(bus || null);
 });
+
+// ── TRIP STATUS — driver starts/ends trip ────────────────────
+router.post('/trip/start', only, async (req, res) => {
+  try {
+    const { schedule_id } = req.body;
+    // verify this schedule belongs to this driver
+    const [rows] = await db.query(
+      'SELECT id FROM schedules WHERE id=? AND driver_id=? AND status="scheduled"',
+      [schedule_id, req.session.user.id]
+    );
+    if (!rows.length) return res.json({ success: false, message: 'Schedule not found or already started.' });
+    await db.query('UPDATE schedules SET status="in_progress" WHERE id=?', [schedule_id]);
+    res.json({ success: true });
+  } catch(err) { res.json({ success: false, message: err.message }); }
+});
+
+router.post('/trip/end', only, async (req, res) => {
+  try {
+    const { schedule_id } = req.body;
+    const [rows] = await db.query(
+      'SELECT id FROM schedules WHERE id=? AND driver_id=? AND status="in_progress"',
+      [schedule_id, req.session.user.id]
+    );
+    if (!rows.length) return res.json({ success: false, message: 'No active trip found.' });
+    await db.query('UPDATE schedules SET status="completed" WHERE id=?', [schedule_id]);
+    res.json({ success: true });
+  } catch(err) { res.json({ success: false, message: err.message }); }
+});

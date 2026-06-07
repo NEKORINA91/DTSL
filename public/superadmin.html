@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>DTSL — Super Admin</title>
+  <link rel="stylesheet" href="/tailwind.css"/>
+  <link rel="stylesheet" href="/css/main.css"/>
+  <link rel="stylesheet" href="/css/superadmin.css"/>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+
+<aside class="fixed inset-y-0 left-0 w-56 flex flex-col z-20 shadow-xl" style="background:#1e1b4b">
+  <div class="p-4 border-b border-indigo-900">
+    <div class="text-white font-bold text-base">⚡ DTSL</div>
+    <div class="text-indigo-300 text-xs mt-0.5">Super Admin</div>
+  </div>
+  <nav class="flex-1 p-2.5 space-y-0.5 overflow-y-auto text-sm">
+    <div class="nav-item active" onclick="nav('dashboard',this)">📊 Overview</div>
+    <div class="nav-item" onclick="nav('depots',this)">🏢 Depots</div>
+    <div class="nav-item" onclick="nav('staff',this)">👥 Employees</div>
+    <div class="nav-item" onclick="nav('buses',this)">🚌 Buses</div>
+    <div class="nav-item" onclick="nav('reports',this)">📄 Reports</div>
+  </nav>
+  <div class="p-3 border-t border-indigo-900">
+    <a href="/logout" class="text-xs text-indigo-300 hover:text-white">🚪 Logout</a>
+  </div>
+</aside>
+
+<main class="ml-56 flex-1 p-6">
+
+<!-- ═══ OVERVIEW ═══ -->
+<section id="s-dashboard">
+  <h2 class="text-xl font-bold text-gray-800 mb-5">Network Overview</h2>
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Total Depots</p><p id="st-depots" class="text-3xl font-bold text-indigo-600 mt-1">—</p></div>
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Total Employees</p><p id="st-staff" class="text-3xl font-bold text-teal-600 mt-1">—</p></div>
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Total Buses</p><p id="st-buses" class="text-3xl font-bold text-purple-600 mt-1">—</p></div>
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Active Routes</p><p id="st-routes" class="text-3xl font-bold text-orange-500 mt-1">—</p></div>
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Active Depots</p><p id="st-active-depots" class="text-3xl font-bold text-green-600 mt-1">—</p></div>
+    <div class="card p-4"><p class="text-xs text-gray-400 uppercase font-semibold">Scheduled Trips</p><p id="st-trips" class="text-3xl font-bold text-blue-600 mt-1">—</p></div>
+  </div>
+  <h3 class="font-bold text-gray-700 mb-3">Depot Breakdown</h3>
+  <div id="depot-cards" class="grid grid-cols-3 gap-4"></div>
+</section>
+
+<!-- ═══ DEPOTS ═══ -->
+<section id="s-depots" class="hidden">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold text-gray-800">Depots</h2>
+    <button class="btn btn-primary" onclick="openModal('m-depot')">+ Add Depot</button>
+  </div>
+  <div class="card overflow-hidden">
+    <table class="w-full">
+      <thead><tr><th>Depot Code</th><th>Name</th><th>Location</th><th>Status</th><th>Buses</th><th>Staff</th><th>Actions</th></tr></thead>
+      <tbody id="depots-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ STAFF ═══ -->
+<section id="s-staff" class="hidden">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold text-gray-800">All Employees</h2>
+    <button class="btn btn-primary" onclick="openModal('m-staff')">+ Add Employee</button>
+  </div>
+  <div class="search-bar">
+    <input id="staff-search" class="inp" placeholder="Search name, email, depot, role..." oninput="filterStaff()"/>
+  </div>
+  <div class="card overflow-hidden">
+    <table class="w-full">
+      <thead><tr><th>Name</th><th>Role</th><th>Depot</th><th>License ID</th><th>Expiry</th><th>Phone</th><th>Actions</th></tr></thead>
+      <tbody id="staff-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ BUSES ═══ -->
+<section id="s-buses" class="hidden">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold text-gray-800">All Buses</h2>
+    <button class="btn btn-primary" onclick="openModal('m-bus')">+ Add Bus</button>
+  </div>
+  <div class="search-bar">
+    <input id="bus-search" class="inp" placeholder="Search registration number, depot..." oninput="filterBuses()"/>
+  </div>
+  <div class="card overflow-hidden">
+    <table class="w-full">
+      <thead><tr><th>Reg. Number</th><th>Depot</th><th>Capacity</th><th>Mileage</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="buses-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ═══ REPORTS ═══ -->
+<section id="s-reports" class="hidden">
+  <h2 class="text-xl font-bold text-gray-800 mb-5">Network Reports</h2>
+  <div class="card p-5" style="max-width:32rem">
+    <p class="font-bold text-gray-700 mb-4">Generate Report</p>
+    <div class="space-y-3 mb-4">
+      <div>
+        <label class="label">Report Type</label>
+        <select id="rep-type" class="inp">
+          <option value="all_staff">All Staff (Network Wide)</option>
+          <option value="depot_staff">Staff by Depot</option>
+          <option value="all_buses">All Buses (Network Wide)</option>
+          <option value="depot_buses">Buses by Depot</option>
+          <option value="full">Full Network Report (All)</option>
+        </select>
+      </div>
+      <div id="rep-depot-wrap">
+        <label class="label">Select Depot <span class="text-gray-400 font-normal">(for depot-specific reports)</span></label>
+        <select id="rep-depot" class="inp">
+          <option value="">All Depots</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="genReport()">Generate &amp; Download PDF</button>
+    <div id="rep-link" class="hidden mt-4 p-3 bg-indigo-50 rounded-lg text-center">
+      <p class="text-xs text-gray-500 mb-1">Report ready</p>
+      <a id="rep-a" href="#" target="_blank" class="text-indigo-700 font-semibold text-sm underline">Download PDF</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- DEPOT MODAL -->
+<div id="m-depot" class="modal">
+  <div class="modal-box max-w-md">
+    <div class="flex justify-between items-center mb-4">
+      <h3 id="depot-modal-title" class="text-lg font-bold">Add Depot</h3>
+      <button onclick="closeModal('m-depot')" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <input type="hidden" id="dm-id"/>
+    <div class="space-y-3">
+      <div><label class="label">Depot Code * <span class="text-gray-400 font-normal text-xs">(e.g. DEPOT-001)</span></label>
+        <input id="dm-code" class="inp" placeholder="DEPOT-001" style="text-transform:uppercase"/></div>
+      <div><label class="label">Depot Name *</label><input id="dm-name" class="inp" placeholder="Colombo Central Depot"/></div>
+      <div><label class="label">Location</label><input id="dm-loc" class="inp" placeholder="Pettah, Colombo 11"/></div>
+      <div><label class="label">Status</label>
+        <select id="dm-status" class="inp">
+          <option value="active">Active</option>
+          <option value="construction">Under Construction</option>
+          <option value="retiring">Retiring</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div><label class="label">Password * <span class="text-gray-400 font-normal text-xs">(leave blank to keep existing)</span></label>
+        <input id="dm-pass" type="password" class="inp" placeholder="Set depot login password"/></div>
+    </div>
+    <div id="dm-err" class="hidden mt-3 text-red-600 text-sm bg-red-50 p-2 rounded"></div>
+    <div class="flex gap-3 mt-5">
+      <button class="btn btn-primary" onclick="saveDepot()">Save</button>
+      <button class="btn btn-gray" onclick="closeModal('m-depot')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div id="m-staff" class="modal">
+  <div class="modal-box max-w-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 id="staff-modal-title" class="text-lg font-bold">Add Employee</h3>
+      <button onclick="closeModal('m-staff')" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <input type="hidden" id="sf-id"/>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="label">First Name *</label><input id="sf-fname" class="inp"/></div>
+      <div><label class="label">Last Name *</label><input id="sf-lname" class="inp"/></div>
+      <div><label class="label">Email *</label><input id="sf-email" type="email" class="inp"/></div>
+      <div><label class="label">Phone</label><input id="sf-phone" class="inp" placeholder="07XXXXXXXX"/></div>
+      <div><label class="label">Role *</label>
+        <select id="sf-role" class="inp">
+          <option value="driver">Driver</option>
+          <option value="conductor">Conductor</option>
+        </select>
+      </div>
+      <div><label class="label">Assign to Depot *</label>
+        <select id="sf-depot" class="inp"><option value="">Select Depot</option></select>
+      </div>
+      <div><label class="label">License ID</label><input id="sf-lic" class="inp" placeholder="B1234567"/></div>
+      <div><label class="label">License Expiry</label><input id="sf-expiry" type="date" class="inp"/></div>
+      <div><label class="label">NTC Number</label><input id="sf-ntc" class="inp" placeholder="NTC-XXXXXX"/></div>
+      <div><label class="label">Working Hours</label><input id="sf-hours" type="number" class="inp" placeholder="0" step="0.5"/></div>
+      <div class="col-span-2"><label class="label">Password <span class="text-gray-400 font-normal">(default: password123)</span></label>
+        <input id="sf-pass" type="password" class="inp"/></div>
+    </div>
+    <div id="sf-err" class="hidden mt-3 text-red-600 text-sm bg-red-50 p-2 rounded"></div>
+    <div class="flex gap-3 mt-5">
+      <button class="btn btn-primary" onclick="saveStaff()">Save</button>
+      <button class="btn btn-gray" onclick="closeModal('m-staff')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUS MODAL -->
+<div id="m-bus" class="modal">
+  <div class="modal-box max-w-md">
+    <div class="flex justify-between items-center mb-4">
+      <h3 id="bus-modal-title" class="text-lg font-bold">Add Bus</h3>
+      <button onclick="closeModal('m-bus')" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <input type="hidden" id="bm-id"/>
+    <div class="space-y-3">
+      <div><label class="label">Registration Number *</label><input id="bm-reg" class="inp" placeholder="NB-XXXX"/></div>
+      <div><label class="label">Capacity *</label><input id="bm-cap" type="number" class="inp" placeholder="52"/></div>
+      <div><label class="label">Mileage (km)</label><input id="bm-mil" type="number" class="inp" placeholder="0"/></div>
+      <div><label class="label">Status</label>
+        <select id="bm-status" class="inp">
+          <option value="active">Active</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="retired">Retired</option>
+        </select>
+      </div>
+      <div><label class="label">Assign to Depot</label>
+        <select id="bm-depot" class="inp"><option value="">Select Depot</option></select>
+      </div>
+    </div>
+    <div id="bm-err" class="hidden mt-3 text-red-600 text-sm bg-red-50 p-2 rounded"></div>
+    <div class="flex gap-3 mt-5">
+      <button class="btn btn-primary" onclick="saveBus()">Save</button>
+      <button class="btn btn-gray" onclick="closeModal('m-bus')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/superadmin.js"></script>
+</body>
+</html>

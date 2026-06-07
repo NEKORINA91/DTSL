@@ -119,23 +119,40 @@ async function loadSchedule(){
     el.innerHTML='<div class="card" style="padding:3rem;text-align:center;color:#9ca3af"><p style="font-size:2.5rem;margin-bottom:.75rem">📅</p><p>No upcoming schedules assigned.</p></div>';
     return;
   }
-  el.innerHTML=rows.map(s=>`
+  el.innerHTML=rows.map(s=>{
+    const isDelayed = s.status==='in_progress' && new Date(s.arrival_time) < new Date();
+    const statusBadge = isDelayed
+      ? '<span class="badge b-red">delayed</span>'
+      : s.status==='in_progress'
+        ? '<span class="badge b-yellow">in progress</span>'
+        : s.status==='completed'
+          ? '<span class="badge b-green">completed</span>'
+          : '<span class="badge b-blue">scheduled</span>';
+    const actionBtn = s.status==='scheduled'
+      ? `<button id="btn-start-${s.id}" class="btn btn-primary" style="width:100%;margin-top:.75rem;font-size:.85rem;padding:.6rem" onclick="startTrip(${s.id})">🚌 Start Trip</button>`
+      : s.status==='in_progress'
+        ? `<button id="btn-end-${s.id}" class="btn" style="width:100%;margin-top:.75rem;font-size:.85rem;padding:.6rem;background:#16a34a;color:#fff;border:none;border-radius:10px;cursor:pointer;" onclick="endTrip(${s.id})">✅ End Trip — Mark Completed</button>`
+        : '';
+    return `
     <div class="card schedule-card ${s.is_emergency?'emergency':''}">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:.75rem">
         <div>
           <h3 style="font-weight:700;font-size:1rem;margin:0">${s.route_name}</h3>
           <p style="font-size:.8rem;color:#9ca3af;margin:.2rem 0 0">📍 ${s.origin} → ${s.destination}</p>
         </div>
-        <span class="badge ${s.status==='in_progress'?'b-yellow':'b-blue'}">${s.status}</span>
+        ${statusBadge}
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;font-size:.82rem">
-        <div><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Bus</p><p style="font-weight:700;margin:0">🚌 ${s.bus_reg}</p><p style="font-size:.72rem;color:#9ca3af;margin:.1rem 0 0">${s.capacity} seats</p></div>
+        <div><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Bus</p><p style="font-weight:700;margin:0">🚌 ${s.bus_reg}</p></div>
         <div><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Departure</p><p style="font-weight:700;margin:0">${new Date(s.departure_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p></div>
         <div><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Arrival</p><p style="font-weight:700;margin:0">${new Date(s.arrival_time).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p></div>
-        ${s.road_name?`<div style="grid-column:span 3;padding-top:.5rem;border-top:1px solid #f3f4f6"><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Road Option</p><p style="font-weight:700;color:#4f46e5;margin:0">🛣️ ${s.road_name} · ${s.road_distance} km</p></div>`:''}
+        ${s.road_name?`<div style="grid-column:span 3;padding-top:.5rem;border-top:1px solid #f3f4f6"><p style="font-size:.7rem;color:#9ca3af;font-weight:700;text-transform:uppercase;margin:0 0 .2rem">Road</p><p style="font-weight:700;color:#4f46e5;margin:0">🛣️ ${s.road_name}</p></div>`:''}
       </div>
-      ${s.is_emergency?'<div style="margin-top:.75rem;font-size:.75rem;font-weight:700;color:#dc2626;background:#fef2f2;padding:.4rem .75rem;border-radius:.5rem">⚠️ Emergency Schedule</div>':''}
-    </div>`).join('');
+      ${isDelayed?'<div style="margin-top:.75rem;font-size:.75rem;font-weight:700;color:#dc2626;background:#fef2f2;padding:.4rem .75rem;border-radius:.5rem">⚠️ This trip is running delayed</div>':''}
+      ${s.is_emergency?'<div style="margin-top:.5rem;font-size:.75rem;font-weight:700;color:#dc2626;background:#fef2f2;padding:.4rem .75rem;border-radius:.5rem">🚨 Emergency Schedule</div>':''}
+      ${actionBtn}
+    </div>`;
+  }).join('');
 }
 
 // ── EXPENSES ──────────────────────────────────────────
@@ -321,3 +338,42 @@ async function sendSOS(){
 
 // ══ INIT ═════════════════════════════════════════════
 loadDashboard();
+
+// ── TRIP STATUS ───────────────────────────────────────────────
+async function startTrip(scheduleId) {
+  const btn = document.getElementById('btn-start-' + scheduleId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting...'; }
+  const res = await api('/api/staff/trip/start', 'POST', { schedule_id: scheduleId });
+  if (res.success) {
+    loadSchedule();
+    loadDashboard();
+    showToast('Trip started! Safe journey 🚌');
+  } else {
+    alert(res.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Start Trip'; }
+  }
+}
+
+async function endTrip(scheduleId) {
+  if (!confirm('End this trip and mark as completed?')) return;
+  const btn = document.getElementById('btn-end-' + scheduleId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Ending...'; }
+  const res = await api('/api/staff/trip/end', 'POST', { schedule_id: scheduleId });
+  if (res.success) {
+    loadSchedule();
+    loadDashboard();
+    showToast('Trip completed ✅');
+  } else {
+    alert(res.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'End Trip'; }
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1a4fa0;color:#fff;padding:.75rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.25);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
