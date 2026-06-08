@@ -1,6 +1,6 @@
 # DTSL: Digital Transport Sri Lanka
 
-## Setup (one time only)
+## Setup process
 
 ### Step 1: Install Node.js
 Download from https://nodejs.org and install (LTS version)
