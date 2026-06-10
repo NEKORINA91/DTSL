@@ -1,4 +1,4 @@
-/* DTSL — superadmin.js */
+
 let allDepots=[], allStaff=[], allBuses=[];
 
 const SECS=['dashboard','depots','staff','buses','reports'];

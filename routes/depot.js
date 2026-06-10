@@ -26,10 +26,12 @@ router.get('/stats', depotOnly, async (req,res) => {
   const [recent] = await db.query(`
     SELECT s.id,r.name AS route,b.reg_number AS bus,
            CONCAT(u.first_name,' ',u.last_name) AS driver,
+           CONCAT(c.first_name,' ',c.last_name) AS conductor,
            s.departure_time,s.arrival_time,s.status,s.is_emergency,
            CASE WHEN s.status='in_progress' AND s.arrival_time<NOW() THEN 1 ELSE 0 END AS is_delayed
     FROM schedules s JOIN routes r ON s.route_id=r.id
     JOIN buses b ON s.bus_id=b.id JOIN users u ON s.driver_id=u.id
+    LEFT JOIN users c ON s.conductor_id=c.id
     WHERE b.depot_id=? ORDER BY s.departure_time DESC LIMIT 8`,[did(req)]);
 
   const [licAlerts] = await db.query(`
@@ -123,9 +125,12 @@ router.get('/schedules', depotOnly, async (req,res) => {
     SELECT s.*,r.name AS route_name,r.origin,r.destination,
            b.reg_number AS bus_reg,ro.road_name,
            CONCAT(u.first_name,' ',u.last_name) AS driver_name,
+           CONCAT(c.first_name,' ',c.last_name) AS conductor_name,
            CASE WHEN s.status='in_progress' AND s.arrival_time<NOW() THEN 1 ELSE 0 END AS is_delayed
     FROM schedules s JOIN routes r ON s.route_id=r.id
-    JOIN buses b ON s.bus_id=b.id JOIN users u ON s.driver_id=u.id
+    JOIN buses b ON s.bus_id=b.id
+    JOIN users u ON s.driver_id=u.id
+    LEFT JOIN users c ON s.conductor_id=c.id
     LEFT JOIN road_options ro ON s.road_option_id=ro.id
     WHERE b.depot_id=? ${dateFilter}
     ORDER BY s.departure_time DESC`,params);
@@ -133,20 +138,49 @@ router.get('/schedules', depotOnly, async (req,res) => {
 });
 
 router.post('/schedules', depotOnly, async (req,res) => {
-  const {route_id,bus_id,driver_id,road_option_id,departure_time,arrival_time,is_emergency,override_reason}=req.body;
-  // verify bus is active
+  const {route_id,bus_id,driver_id,conductor_id,road_option_id,departure_time,arrival_time,is_emergency,override_reason}=req.body;
+
+  // validate required fields
+  if(!route_id||!bus_id||!driver_id||!conductor_id||!departure_time||!arrival_time)
+    return res.json({success:false,message:'Route, bus, driver, conductor, departure and arrival time are all required.'});
+  if(driver_id===conductor_id)
+    return res.json({success:false,message:'Driver and conductor must be different people.'});
+  if(new Date(arrival_time)<=new Date(departure_time))
+    return res.json({success:false,message:'Arrival time must be after departure time.'});
+
+  // verify bus belongs to depot and is active
   const [[bus]] = await db.query('SELECT status FROM buses WHERE id=? AND depot_id=?',[bus_id,did(req)]);
   if(!bus) return res.json({success:false,message:'Bus not found in your depot.'});
-  if(bus.status==='maintenance') return res.json({success:false,message:'This bus is currently under maintenance and cannot be scheduled.'});
+  if(bus.status==='maintenance') return res.json({success:false,message:'This bus is under maintenance and cannot be scheduled.'});
   if(bus.status==='retired') return res.json({success:false,message:'This bus is retired and cannot be scheduled.'});
+
   if(!is_emergency){
-    const [bc] = await db.query(`SELECT id FROM schedules WHERE bus_id=? AND status NOT IN ('cancelled','completed') AND departure_time<? AND arrival_time>?`,[bus_id,arrival_time,departure_time]);
-    if(bc.length) return res.json({success:false,conflict:'bus',message:'This bus already has a schedule during that time.'});
-    const [dc] = await db.query(`SELECT id FROM schedules WHERE driver_id=? AND status NOT IN ('cancelled','completed') AND departure_time<? AND arrival_time>?`,[driver_id,arrival_time,departure_time]);
-    if(dc.length) return res.json({success:false,conflict:'driver',message:'This driver is already assigned during that time.'});
+    // bus conflict — same bus overlapping time
+    const [bc] = await db.query(
+      `SELECT id FROM schedules WHERE bus_id=? AND status NOT IN ('cancelled','completed')
+       AND departure_time < ? AND arrival_time > ?`,
+      [bus_id, arrival_time, departure_time]);
+    if(bc.length) return res.json({success:false,conflict:'bus',message:`This bus already has a schedule during that time. Choose a different bus or time.`});
+
+    // driver conflict — same driver overlapping time
+    const [dc] = await db.query(
+      `SELECT id FROM schedules WHERE driver_id=? AND status NOT IN ('cancelled','completed')
+       AND departure_time < ? AND arrival_time > ?`,
+      [driver_id, arrival_time, departure_time]);
+    if(dc.length) return res.json({success:false,conflict:'driver',message:`This driver is already assigned to another schedule during that time.`});
+
+    // conductor conflict — same conductor overlapping time
+    const [cc] = await db.query(
+      `SELECT id FROM schedules WHERE conductor_id=? AND status NOT IN ('cancelled','completed')
+       AND departure_time < ? AND arrival_time > ?`,
+      [conductor_id, arrival_time, departure_time]);
+    if(cc.length) return res.json({success:false,conflict:'conductor',message:`This conductor is already assigned to another schedule during that time.`});
   }
-  const [r] = await db.query(`INSERT INTO schedules (route_id,bus_id,driver_id,road_option_id,departure_time,arrival_time,is_emergency,override_reason) VALUES (?,?,?,?,?,?,?,?)`,
-    [route_id,bus_id,driver_id,road_option_id||null,departure_time,arrival_time,is_emergency?1:0,override_reason||null]);
+
+  const [r] = await db.query(
+    `INSERT INTO schedules (route_id,bus_id,driver_id,conductor_id,road_option_id,departure_time,arrival_time,is_emergency,override_reason)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [route_id,bus_id,driver_id,conductor_id,road_option_id||null,departure_time,arrival_time,is_emergency?1:0,override_reason||null]);
   res.json({success:true,id:r.insertId});
 });
 
@@ -285,23 +319,6 @@ router.post('/reports/generate', depotOnly, async (req,res) => {
   await db.query('INSERT INTO reports (user_id,depot_id,type,export_path) VALUES (?,?,?,?)',
     [req.session.user.id,did(req),type,'/uploads/'+fname]);
   res.json({success:true,file:'/uploads/'+fname});
-});
-
-// fuel consumption per route
-router.get('/expenses/fuel-by-route', depotOnly, async (req,res) => {
-  const [rows] = await db.query(`
-    SELECT r.name AS route_name,
-           SUM(e.amount) AS total_fuel,
-           COUNT(DISTINCT s.bus_id) AS buses_used,
-           ROUND(SUM(e.amount) / COUNT(s.id), 2) AS avg_per_trip
-    FROM expense_receipts e
-    JOIN schedules s ON e.schedule_id = s.id
-    JOIN routes r ON s.route_id = r.id
-    JOIN buses b ON s.bus_id = b.id
-    WHERE b.depot_id = ? AND e.category = 'fuel'
-    GROUP BY r.id, r.name
-    ORDER BY total_fuel DESC`, [did(req)]);
-  res.json(rows);
 });
 
 module.exports = router;

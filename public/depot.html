@@ -171,7 +171,7 @@
   </div>
   <div id="sched-table-view" class="card overflow-hidden">
     <table class="w-full">
-      <thead><tr><th>Route</th><th>Bus</th><th>Driver</th><th>Road</th><th>Departure</th><th>Arrival</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Route</th><th>Bus</th><th>Driver / Conductor</th><th>Road</th><th>Departure</th><th>Arrival</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody id="sched-tbody"></tbody>
     </table>
   </div>
@@ -406,7 +406,8 @@
       <div><label class="label">Route *</label><select id="sc-route" class="inp" onchange="onRouteChange()"><option value="">Select Route</option></select></div>
       <div><label class="label">Road Option</label><select id="sc-road" class="inp"><option value="">Select Road</option></select></div>
       <div><label class="label">Bus *</label><select id="sc-bus" class="inp"><option value="">Select Bus</option></select></div>
-      <div><label class="label">Driver *</label><select id="sc-driver" class="inp"><option value="">Select Driver/Conductor</option></select></div>
+      <div><label class="label">Driver *</label><select id="sc-driver" class="inp"><option value="">Select Driver</option></select></div>
+      <div><label class="label">Conductor *</label><select id="sc-conductor" class="inp"><option value="">Select Conductor</option></select></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="label">Departure *</label><input id="sc-dep" type="datetime-local" class="inp"/></div>
         <div><label class="label">Arrival *</label><input id="sc-arr" type="datetime-local" class="inp"/></div>

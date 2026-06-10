@@ -1,13 +1,9 @@
-/* ═══════════════════════════════════════════════════
-   DTSL — admin.js  (complete, all 6 features)
-   ═══════════════════════════════════════════════════ */
-
 let allRoutes=[], allBuses=[], allStaff=[], allScheds=[], allMaint=[], allExp=[], allLive=[];
 let liveMap=null, liveMarkers={};
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let schedView='table', schedPeriod='all';
 
-// ══ NAV ══════════════════════════════════════════════
+// Navigation
 const SECS=['dashboard','staff','buses','routes','schedules','live','maintenance','expenses','reports'];
 const LOADERS={dashboard:loadDash,staff:loadStaff,buses:loadBuses,routes:loadRoutes,
   schedules:loadScheds,live:loadLive,maintenance:loadMaint,expenses:loadExpenses,reports:loadReports};
@@ -39,7 +35,7 @@ function fmtDT(d){return d?new Date(d).toLocaleString('en-GB',{day:'2-digit',mon
 function fmtD(d){return d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';}
 function q(id){return document.getElementById(id);}
 
-// ══ CALENDAR ════════════════════════════════════════
+// Calendar Feature
 function renderCal(){
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
   q('cal-title').textContent=months[calMonth]+' '+calYear;
@@ -68,7 +64,7 @@ function renderCal(){
 function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCal();}
 function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCal();}
 
-// ══ DASHBOARD ════════════════════════════════════════
+// Dash Board
 async function loadDash(){
   const d=await api('/api/depot/stats');
   q('st-buses').textContent=d.stats.buses;
@@ -129,9 +125,10 @@ async function loadDash(){
 }
 renderUtilChart();
 
+
 }
 
-// ══ STAFF ════════════════════════════════════════════
+// For staff only
 async function loadStaff(){
   [allStaff,allBuses]=await Promise.all([api('/api/depot/staff'),api('/api/depot/buses')]);
   q('sf-bus').innerHTML='<option value="">None</option>'+allBuses.map(b=>`<option value="${b.id}">${b.reg_number}</option>`).join('');
@@ -176,6 +173,8 @@ if (expiring.length && alertBox && alertList) {
 } else if (alertBox) {
   alertBox.classList.add('hidden');
 }
+
+  
 }
 function filterStaff(){
   const v=q('staff-search').value.toLowerCase();
@@ -257,7 +256,7 @@ async function delBus(id){
   await api('/api/depot/buses/'+id,'DELETE'); loadBuses();
 }
 
-// ══ ROUTES ═══════════════════════════════════════════
+// Routes
 async function loadRoutes(){
   allRoutes=await api('/api/depot/routes');
   renderRoutes(allRoutes);
@@ -330,9 +329,10 @@ async function loadScheds(){
     }).join('');
   const drivers=allStaff.filter(s=>s.role==='driver');
   const conductors=allStaff.filter(s=>s.role==='conductor');
-  q('sc-driver').innerHTML='<option value="">Select Driver / Conductor</option>'
-    +(drivers.length?'<optgroup label="── Drivers ──">'+drivers.map(s=>`<option value="${s.id}">🚌 ${s.first_name} ${s.last_name}</option>`).join('')+'</optgroup>':'')
-    +(conductors.length?'<optgroup label="── Conductors ──">'+conductors.map(s=>`<option value="${s.id}">🎫 ${s.first_name} ${s.last_name}</option>`).join('')+'</optgroup>':'');
+  q('sc-driver').innerHTML='<option value="">Select Driver</option>'
+    +drivers.map(s=>`<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+  q('sc-conductor').innerHTML='<option value="">Select Conductor</option>'
+    +conductors.map(s=>`<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
   await refreshSchedView();
 }
 async function refreshSchedView(){
@@ -349,7 +349,7 @@ function renderScheds(data){
   q('sched-tbody').innerHTML=data.length?data.map(s=>`<tr>
     <td style="font-weight:600;font-size:.82rem">${s.route_name}</td>
     <td style="font-size:.82rem">${s.bus_reg}</td>
-    <td style="font-size:.82rem">${s.driver_name}</td>
+    <td style="font-size:.82rem">${s.driver_name}<br><span style="font-size:.72rem;color:#6b7280">${s.conductor_name||'—'}</span></td>
     <td style="font-size:.75rem;color:#6b7280">${s.road_name||'—'}</td>
     <td style="font-size:.78rem">${fmtDT(s.departure_time)}</td>
     <td style="font-size:.78rem">${fmtDT(s.arrival_time)}</td>
@@ -402,14 +402,20 @@ async function saveSched(){
   const route_id=q('sc-route').value;
   const bus_id=q('sc-bus').value;
   const driver_id=q('sc-driver').value;
+  const conductor_id=q('sc-conductor').value;
   const dep=q('sc-dep').value;
   const arr=q('sc-arr').value;
-  if(!route_id||!bus_id||!driver_id||!dep||!arr){
-    q('sc-conflict').textContent='Please fill in all required fields (route, bus, driver, departure and arrival time).';
+  if(!route_id||!bus_id||!driver_id||!conductor_id||!dep||!arr){
+    q('sc-conflict').textContent='Please fill in all fields — route, bus, driver, conductor, departure and arrival time are all required.';
     q('sc-conflict').classList.remove('hidden');
     return;
   }
-  const body={route_id,bus_id,driver_id,
+  if(driver_id===conductor_id){
+    q('sc-conflict').textContent='Driver and conductor must be different people.';
+    q('sc-conflict').classList.remove('hidden');
+    return;
+  }
+  const body={route_id,bus_id,driver_id,conductor_id,
     road_option_id:q('sc-road').value||null,departure_time:q('sc-dep').value,arrival_time:q('sc-arr').value,
     is_emergency:q('sc-emerg').checked,override_reason:q('sc-reason').value};
   const res=id?await api('/api/depot/schedules/'+id,'PATCH',body):await api('/api/depot/schedules','POST',body);
@@ -479,34 +485,8 @@ async function loadMaint(){
     q('maint-due').classList.add('hidden');
   }
 
-  // ═══ FRIEND B — PASTE YOUR FUEL CONSUMPTION CHART HERE ═══
-  // Instructions: call api('/api/depot/expenses/fuel-trend') and render a bar chart
-  // Target element: id="fuel-chart-wrap"
-  // Data format: [{month:'2025-01', total:45000}, ...]
-  // ═══════════════════════════════════════════════════
-  // fuel by route
-const routeFuel = await api('/api/depot/expenses/fuel-by-route');
-if (routeFuel.length) {
-  const existing = document.getElementById('fuel-chart-wrap');
-  const routeDiv = document.createElement('div');
-  routeDiv.className = 'card p-5 mb-5';
-  routeDiv.innerHTML = `
-    <p class="font-bold text-gray-700 mb-1">Fuel Consumption by Route</p>
-    <p style="font-size:.72rem;color:#6b7280;margin-bottom:1rem">Identifies high-usage routes</p>
-    <table class="w-full" style="font-size:.8rem">
-      <thead><tr><th>Route</th><th>Total Fuel (LKR)</th><th>Avg per Trip</th><th>Buses Used</th></tr></thead>
-      <tbody>${routeFuel.map(r=>`<tr>
-        <td style="font-weight:600">${r.route_name}</td>
-        <td style="color:#c2410c;font-weight:700">LKR ${parseFloat(r.total_fuel).toLocaleString()}</td>
-        <td>LKR ${parseFloat(r.avg_per_trip).toLocaleString()}</td>
-        <td>${r.buses_used}</td>
-      </tr>`).join('')}</tbody>
-    </table>`;
-  if (existing) existing.after(routeDiv);
+  // Kishen
 }
-}
-
-
 function renderMaint(data){
   if(!data.length){q('maint-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:#9ca3af;">No maintenance logs.</td></tr>';return;}
   const grouped={};
@@ -581,7 +561,7 @@ function filterExp(){
   renderExp(allExp.filter(r=>(!v||[r.staff_name,r.notes||''].join(' ').toLowerCase().includes(v))&&(!cat||r.category===cat)));
 }
 
-// ══ REPORTS ══════════════════════════════════════════
+// Reports
 async function loadReports(){
   if(!allBuses.length)allBuses=await api('/api/depot/buses');
   q('rep-bus').innerHTML='<option value="">All Buses</option>'+allBuses.map(b=>`<option value="${b.id}">${b.reg_number}</option>`).join('');
@@ -602,11 +582,7 @@ async function loadReports(){
       </div>`).join('');
   }
 
-  // ═══ FRIEND B — PASTE YOUR WEEKLY/MONTHLY REPORT FILTER HERE ═══
-  // Instructions: add UI for period selector (week/month/all) and wire it to genReport()
-  // Target element: id="rep-period-wrap"
-  // The genReport() function already accepts period param — just set q('rep-period').value
-  // ═══════════════════════════════════════════════════
+  // Kishen
 }
 
 async function genReport(){
@@ -646,10 +622,10 @@ async function genReport(){
   }
 }
 
-// ══ INIT ═════════════════════════════════════════════
+// 
 loadDash(); // depot admin
 
-// ── BUS STATUS (depot admin only) ────────────────────────────
+// Bus status
 async function setBusStatus(id, status) {
   const label = {maintenance:'Mark as Maintenance', active:'Mark as Active', retired:'Retire Bus'};
   const msg = status==='maintenance'

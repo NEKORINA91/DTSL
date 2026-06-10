@@ -78,12 +78,14 @@ CREATE TABLE schedules (
   departure_time  DATETIME NOT NULL,
   arrival_time    DATETIME NOT NULL,
   status          ENUM('scheduled','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
+  conductor_id    INT,
   is_emergency    TINYINT(1) NOT NULL DEFAULT 0,
   override_reason TEXT,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (route_id)       REFERENCES routes(id)       ON DELETE CASCADE,
   FOREIGN KEY (bus_id)         REFERENCES buses(id)        ON DELETE CASCADE,
   FOREIGN KEY (driver_id)      REFERENCES users(id)        ON DELETE CASCADE,
+  FOREIGN KEY (conductor_id)   REFERENCES users(id)        ON DELETE SET NULL,
   FOREIGN KEY (road_option_id) REFERENCES road_options(id) ON DELETE SET NULL
 );
 
@@ -193,24 +195,25 @@ INSERT INTO road_options (route_id,road_name,distance,description) VALUES
 (6,'A2 — Galle-Matara Southern',   26.50,'Short coastal hop');
 
 -- Schedules showing all statuses
-INSERT INTO schedules (route_id,bus_id,driver_id,road_option_id,departure_time,arrival_time,status) VALUES
+-- conductor IDs: 5=Priya(depot1), 6=Amara(depot1), 8=Lakmal(depot2), 9=Saman(depot3)
+INSERT INTO schedules (route_id,bus_id,driver_id,conductor_id,road_option_id,departure_time,arrival_time,status) VALUES
 -- completed (past)
-(1,1,2,1, '2026-05-20 06:00:00','2026-05-20 09:30:00','completed'),
-(2,2,3,3, '2026-05-20 07:00:00','2026-05-20 09:45:00','completed'),
-(4,4,6,6, '2026-05-21 08:00:00','2026-05-21 10:30:00','completed'),
-(5,5,7,7, '2026-05-22 05:30:00','2026-05-22 07:45:00','completed'),
-(6,6,9,8, '2026-05-23 09:00:00','2026-05-23 09:45:00','completed'),
+(1,1,2,5,1, '2026-05-20 06:00:00','2026-05-20 09:30:00','completed'),
+(2,2,3,6,3, '2026-05-20 07:00:00','2026-05-20 09:45:00','completed'),
+(4,4,6,8,6, '2026-05-21 08:00:00','2026-05-21 10:30:00','completed'),
+(5,5,7,8,7, '2026-05-22 05:30:00','2026-05-22 07:45:00','completed'),
+(6,6,9,9,8, '2026-05-23 09:00:00','2026-05-23 09:45:00','completed'),
 -- in_progress (today)
-(1,1,2,1, '2026-06-07 06:00:00','2026-06-07 09:30:00','in_progress'),
-(4,4,6,6, '2026-06-07 07:00:00','2026-06-07 09:30:00','in_progress'),
+(1,1,2,5,1, '2026-06-07 06:00:00','2026-06-07 09:30:00','in_progress'),
+(4,4,6,8,6, '2026-06-07 07:00:00','2026-06-07 09:30:00','in_progress'),
 -- delayed (in_progress but arrival passed)
-(3,2,3,5, '2026-06-05 05:00:00','2026-06-05 14:30:00','in_progress'),
+(3,2,3,6,5, '2026-06-05 05:00:00','2026-06-05 14:30:00','in_progress'),
 -- scheduled (upcoming)
-(2,2,3,3, '2026-06-07 10:00:00','2026-06-07 12:30:00','scheduled'),
-(5,5,7,7, '2026-06-07 11:00:00','2026-06-07 13:15:00','scheduled'),
-(6,6,9,8, '2026-06-07 13:00:00','2026-06-07 13:45:00','scheduled'),
-(1,1,2,1, '2026-06-08 06:00:00','2026-06-08 09:30:00','scheduled'),
-(4,4,6,6, '2026-06-09 08:00:00','2026-06-09 10:30:00','scheduled');
+(2,2,3,5,3, '2026-06-07 10:00:00','2026-06-07 12:30:00','scheduled'),
+(5,5,7,8,7, '2026-06-07 11:00:00','2026-06-07 13:15:00','scheduled'),
+(6,6,9,9,8, '2026-06-07 13:00:00','2026-06-07 13:45:00','scheduled'),
+(1,1,2,5,1, '2026-06-08 06:00:00','2026-06-08 09:30:00','scheduled'),
+(4,4,6,8,6, '2026-06-09 08:00:00','2026-06-09 10:30:00','scheduled');
 
 INSERT INTO maintenance_logs (bus_id,service_date,type,description,cost,technician_name,next_service) VALUES
 (3,'2026-05-15','corrective','Engine overhaul — crankshaft bearing',45000.00,'Sunil Auto Works',  '2026-08-15'),
