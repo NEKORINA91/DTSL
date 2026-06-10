@@ -485,7 +485,28 @@ async function loadMaint(){
     q('maint-due').classList.add('hidden');
   }
 
-  // Kishen
+  async function renderFuelChart() {
+  const data = await api('/api/admin/expenses/fuel-trend');
+  const wrap = document.getElementById('fuel-chart-wrap');
+  if (!wrap || !data.length) return;
+  const max = Math.max(...data.map(d => d.total));
+  wrap.innerHTML = `
+    <div class="card p-5">
+      <p class="font-bold text-gray-700 mb-1">Fuel Consumption Trend (Last 6 Months)</p>
+      <p style="font-size:.72rem;color:#6b7280;margin-bottom:1rem">Total LKR spent on fuel per month</p>
+      <div style="display:flex;align-items:flex-end;gap:12px;height:120px">
+        ${data.map(d => {
+          const h = max > 0 ? Math.round((d.total / max) * 100) : 0;
+          const month = new Date(d.month + '-01').toLocaleDateString('en-GB', {month:'short', year:'2-digit'});
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <span style="font-size:.62rem;color:#1a4fa0;font-weight:700">LKR ${Math.round(d.total/1000)}k</span>
+            <div style="width:100%;background:#1a4fa0;border-radius:4px 4px 0 0;height:${h}%;min-height:4px;transition:height .4s"></div>
+            <span style="font-size:.6rem;color:#6b7280">${month}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
 }
 function renderMaint(data){
   if(!data.length){q('maint-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:#9ca3af;">No maintenance logs.</td></tr>';return;}
@@ -582,7 +603,18 @@ async function loadReports(){
       </div>`).join('');
   }
 
-  // Kishen
+  const periodWrap = document.getElementById('rep-period-wrap');
+if (periodWrap && !document.getElementById('rep-period')) {
+  periodWrap.innerHTML = `
+    <div>
+      <label class="label">Report Period</label>
+      <select id="rep-period" class="inp">
+        <option value="all">All Time</option>
+        <option value="month">Last 30 Days</option>
+        <option value="week">Last 7 Days</option>
+      </select>
+    </div>`;
+}
 }
 
 async function genReport(){
