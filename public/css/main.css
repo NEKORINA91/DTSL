@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════════
-   DTSL — Digital Transport Sri Lanka
-   main.css — Shared styles across all pages
-   ═══════════════════════════════════════════════════ */
-
 *, ::before, ::after { box-sizing: border-box; }
 
 body {
@@ -12,7 +7,7 @@ body {
   color: #1f2937;
 }
 
-/* ── INPUTS ─────────────────────────────────────── */
+/* inputs */
 .inp {
   width: 100%;
   border: 1px solid #d1d5db;
@@ -28,7 +23,7 @@ body {
   box-shadow: 0 0 0 2px rgba(99,102,241,.15);
 }
 
-/* ── BUTTONS ────────────────────────────────────── */
+/* Buttonz */
 .btn {
   padding: .45rem 1.1rem;
   border-radius: .5rem;
@@ -53,14 +48,14 @@ body {
 .btn-sm { padding: .28rem .7rem; font-size: .72rem; }
 .btn-full { width: 100%; }
 
-/* ── CARDS ──────────────────────────────────────── */
+/*Cards */
 .card {
   background: #fff;
   border-radius: .75rem;
   box-shadow: 0 1px 4px rgba(0,0,0,.07);
 }
 
-/* ── BADGES ─────────────────────────────────────── */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -80,7 +75,7 @@ body {
 .b-indigo { background: #e0e7ff; color: #3730a3; }
 .b-pink   { background: #fce7f3; color: #be185d; }
 
-/* ── TABLE ──────────────────────────────────────── */
+/* Table */
 table { width: 100%; border-collapse: collapse; }
 th {
   padding: .65rem 1rem;
@@ -102,7 +97,7 @@ td {
 }
 tr:hover td { background: #fafafa; }
 
-/* ── MODAL ──────────────────────────────────────── */
+
 .modal {
   display: none;
   position: fixed;
@@ -123,7 +118,7 @@ tr:hover td { background: #fafafa; }
   overflow-y: auto;
 }
 
-/* ── FORM LABEL ─────────────────────────────────── */
+
 .label {
   display: block;
   font-size: .75rem;
@@ -132,7 +127,7 @@ tr:hover td { background: #fafafa; }
   margin-bottom: .3rem;
 }
 
-/* ── SEARCH BAR ─────────────────────────────────── */
+/* Seatch bar bruh */
 .search-bar {
   display: flex;
   gap: .5rem;
@@ -140,18 +135,18 @@ tr:hover td { background: #fafafa; }
 }
 .search-bar input { flex: 1; }
 
-/* ── ALERTS ─────────────────────────────────────── */
+/* All alrts  */
 .alert-err { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
 .alert-ok  { background:#f0fdf4; border:1px solid #86efac; color:#166534; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
 .alert-warn{ background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:.5rem; padding:.5rem .75rem; font-size:.8rem; }
 
-/* ── ANIMATIONS ─────────────────────────────────── */
+
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 .animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
 @keyframes sosPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)} 50%{box-shadow:0 0 0 16px rgba(220,38,38,0)} }
 .sos-active { animation: sosPulse 1.5s infinite; }
 
-/* ── UTILITIES ──────────────────────────────────── */
+
 .hidden   { display: none !important; }
 .flex     { display: flex; }
 .grid     { display: grid; }

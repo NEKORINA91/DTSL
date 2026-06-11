@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════════
-   DTSL — staff.css
-   Staff portal specific styles
-   ═══════════════════════════════════════════════════ */
-
 /* ── SIDEBAR ────────────────────────────────────── */
 .sidebar {
   position: fixed;
@@ -40,10 +35,10 @@
   color: #fff;
 }
 
-/* ── MAIN CONTENT ───────────────────────────────── */
+/* Main */
 .main-content { margin-left: 14rem; padding: 1.5rem; min-height: 100vh; }
 
-/* ── SCHEDULE CARD ──────────────────────────────── */
+/* cards */
 .schedule-card {
   border-left: 4px solid #0d9488;
   padding: 1.25rem;
@@ -51,7 +46,7 @@
 }
 .schedule-card.emergency { border-left-color: #dc2626; }
 
-/* ── LOCATION INDICATOR ─────────────────────────── */
+/* Locations things*/
 .loc-dot {
   width: .5rem;
   height: .5rem;
@@ -61,7 +56,7 @@
   animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite;
 }
 
-/* ── SPEED DIAL ─────────────────────────────────── */
+/* Quick dials */
 .dial-btn {
   display: flex;
   flex-direction: column;
@@ -92,7 +87,7 @@
 .dial-fuel       { background: #f3e8ff; color: #7e22ce; }
 .dial-fuel:hover       { background: #e9d5ff; }
 
-/* ── SOS BUTTON ─────────────────────────────────── */
+/* SOS sauce */
 .sos-btn {
   width: 180px;
   height: 180px;
@@ -112,7 +107,7 @@
 }
 .sos-btn:hover { background: #b91c1c; }
 
-/* ── MAP SEARCH OVERLAY ─────────────────────────── */
+/* Map search*/
 .map-search-overlay {
   position: absolute;
   top: 12px;
@@ -136,7 +131,7 @@
 .map-legend-item:last-child { margin-bottom: 0; }
 .legend-dot { width: .65rem; height: .65rem; border-radius: 9999px; display: inline-block; flex-shrink: 0; }
 
-/* ── EXPENSE TABLE ──────────────────────────────── */
+/* Expesen table */
 .exp-category-fuel        { background: #dbeafe; color: #1d4ed8; }
 .exp-category-toll        { background: #f3e8ff; color: #7e22ce; }
 .exp-category-maintenance { background: #ffedd5; color: #c2410c; }

@@ -24,7 +24,7 @@ function badge(s){
 }
 function fmtD(d){return d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';}
 
-// ── DASHBOARD ─────────────────────────────────────────────────
+// Super admin dashboard
 async function loadDash(){
   const d = await api('/api/superadmin/stats');
   document.getElementById('st-depots').textContent       = d.stats.total_depots;
@@ -61,7 +61,7 @@ async function loadDash(){
     </div>`).join('');
 }
 
-// ── DEPOTS ────────────────────────────────────────────────────
+// Depot scenes
 async function loadDepots(){
   allDepots = await api('/api/superadmin/depots');
   document.getElementById('depots-tbody').innerHTML = allDepots.length
@@ -107,7 +107,7 @@ async function delDepot(id){
   await api('/api/superadmin/depots/'+id,'DELETE'); loadDepots(); loadDash();
 }
 
-// ── STAFF ─────────────────────────────────────────────────────
+// Staffs
 async function loadStaff(){
   [allStaff, allDepots] = await Promise.all([api('/api/superadmin/staff'), api('/api/superadmin/depots-list')]);
   document.getElementById('sf-depot').innerHTML='<option value="">Select Depot</option>'+allDepots.map(d=>`<option value="${d.id}">${d.depot_code} — ${d.name}</option>`).join('');
@@ -172,7 +172,7 @@ async function delStaff(id){
   await api('/api/superadmin/staff/'+id,'DELETE'); loadStaff();
 }
 
-// ── BUSES ─────────────────────────────────────────────────────
+// Buses 
 async function loadBuses(){
   [allBuses, allDepots]=await Promise.all([api('/api/superadmin/buses'),api('/api/superadmin/depots-list')]);
   document.getElementById('bm-depot').innerHTML='<option value="">No Depot</option>'+allDepots.map(d=>`<option value="${d.id}">${d.depot_code} — ${d.name}</option>`).join('');
@@ -222,7 +222,7 @@ async function delBus(id){
 
 loadDash();
 
-// ── REPORTS ──────────────────────────────────────────────────
+// Reports
 async function loadReports(){
   document.getElementById('rep-link').classList.add('hidden');
   const depots = await api('/api/superadmin/depots-list');

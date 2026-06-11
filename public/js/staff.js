@@ -1,15 +1,10 @@
-/* ═══════════════════════════════════════════════════
-   DTSL — staff.js
-   Staff portal — all JavaScript logic
-   ═══════════════════════════════════════════════════ */
-
 let myMap=null, myMarker=null, busStopMarkers=[], poiMarkers=[];
 let sharing=false, locInterval=null;
 let myBusId=null, mySchedules=[];
 let sosActive=false;
 let depotPhone='0771234567';
 
-// ── POI DATA (Sri Lanka) ──────────────────────────────
+// Datas
 const BUS_STOPS=[
   {name:'Colombo Fort Bus Stand',lat:6.9344,lng:79.8428},
   {name:'Kandy Bus Station',lat:7.2906,lng:80.6337},
@@ -41,7 +36,7 @@ const ALL_POI=[
   ...REPAIR_SHOPS.map(p=>({...p,type:'repair'})),
 ];
 
-// ── NAV ───────────────────────────────────────────────
+// Navigation
 const SECS=['dashboard','schedule','expenses','map','emergency'];
 function nav(id,el){
   SECS.forEach(s=>document.getElementById('s-'+s).classList.add('hidden'));
@@ -61,7 +56,7 @@ async function api(url,method='GET',body=null){
   return (await fetch(url,o)).json();
 }
 
-// ── DASHBOARD ─────────────────────────────────────────
+// Dash baord
 async function loadDashboard(){
   document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const scheds=await api('/api/staff/schedule');
@@ -111,7 +106,7 @@ async function loadDashboard(){
   if(sel) sel.innerHTML='<option value="">None</option>'+scheds.map(s=>`<option value="${s.id}">${s.route_name} — ${new Date(s.departure_time).toLocaleString()}</option>`).join('');
 }
 
-// ── SCHEDULE ──────────────────────────────────────────
+// sehdules get
 async function loadSchedule(){
   const rows=await api('/api/staff/schedule');
   const el=document.getElementById('sched-list');
@@ -155,7 +150,7 @@ async function loadSchedule(){
   }).join('');
 }
 
-// ── EXPENSES ──────────────────────────────────────────
+// Mark expenese
 function toggleFuelFields(){
   const cat=document.getElementById('rc-cat').value;
   const ff=document.getElementById('fuel-fields');
@@ -209,7 +204,7 @@ async function submitExpense(){
   loadExpenses();
 }
 
-// ── MAP ───────────────────────────────────────────────
+//Maps 
 function makeIcon(color,emoji){
   return L.divIcon({html:`<div style="background:${color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.3);border:2px solid white;">${emoji}</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-14],className:''});
 }
@@ -263,7 +258,7 @@ function panToMarker(lat,lng,name){
   document.getElementById('map-search-inp').value=name;
 }
 
-// ── LOCATION SHARING ──────────────────────────────────
+// Lcoation sharring
 function toggleLocation(){
   if(!sharing)startSharing(); else stopSharing();
 }
@@ -297,7 +292,7 @@ function sendLoc(){
   },err=>console.warn('GPS:',err.message));
 }
 
-// ── EMERGENCY ─────────────────────────────────────────
+// Emergency buttons and stuffs
 async function loadEmergency(){
   const d=await api('/api/staff/depot-contact');
   depotPhone=d.phone;
@@ -336,10 +331,10 @@ async function sendSOS(){
   sendLoc();
 }
 
-// ══ INIT ═════════════════════════════════════════════
+
 loadDashboard();
 
-// ── TRIP STATUS ───────────────────────────────────────────────
+// Trip
 async function startTrip(scheduleId) {
   const btn = document.getElementById('btn-start-' + scheduleId);
   if (btn) { btn.disabled = true; btn.textContent = 'Starting...'; }
