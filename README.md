@@ -3,7 +3,7 @@
 ## Setup process
 
 ### Step 1: Install Node.js
-Download from https://nodejs.org and install (LTS version)
+Download from https://nodejs.org and install LTS version
 
 ### Step 2: Set up the database
 1. Open XAMPP → start MySQL
@@ -13,8 +13,12 @@ Download from https://nodejs.org and install (LTS version)
 
 ### Step 3: Install packages
 Open terminal/cmd inside this folder:
+npm install
 
 ### Step 4: Run the server
+
+node server.js
+
 ### Step 5 — Open the app
 http://localhost:3000
 
