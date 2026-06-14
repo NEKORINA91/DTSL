@@ -21,8 +21,8 @@ router.get('/schedule', only, async (req,res) => {
     JOIN routes r ON s.route_id=r.id
     JOIN buses  b ON s.bus_id=b.id
     LEFT JOIN road_options ro ON s.road_option_id=ro.id
-    WHERE s.driver_id=? AND s.status IN ('scheduled','in_progress')
-    ORDER BY s.departure_time ASC`, [req.session.user.id]);
+    WHERE (s.driver_id=? OR s.conductor_id=?) AND s.status IN ('scheduled','in_progress')
+    ORDER BY s.departure_time ASC`, [req.session.user.id, req.session.user.id]);
   res.json(rows);
 });
 
@@ -57,24 +57,34 @@ router.get('/depot-contact', only, async (req,res) => {
   res.json({ phone: admin ? admin.phone : '0771234567' });
 });
 
-module.exports = router;
-
-// ── MY BUS ───────────────────────────────────────────────────
+// assigend bus
 router.get('/mybus', only, async (req,res) => {
-  const [[user]] = await db.query('SELECT assigned_bus_id FROM users WHERE id=?', [req.session.user.id]);
-  if (!user || !user.assigned_bus_id) return res.json(null);
-  const [[bus]] = await db.query('SELECT * FROM buses WHERE id=?', [user.assigned_bus_id]);
-  res.json(bus || null);
+  const [[user]] = await db.query('SELECT assigned_bus_id, role FROM users WHERE id=?', [req.session.user.id]);
+  if (!user) return res.json(null);
+
+  // driver to see
+  if (user.assigned_bus_id) {
+    const [[bus]] = await db.query('SELECT * FROM buses WHERE id=?', [user.assigned_bus_id]);
+    return res.json(bus || null);
+  }
+
+  // conda to see
+  const [rows] = await db.query(`
+    SELECT b.* FROM schedules s
+    JOIN buses b ON s.bus_id = b.id
+    WHERE s.conductor_id = ? AND s.status IN ('scheduled','in_progress')
+    ORDER BY s.departure_time ASC LIMIT 1`, [req.session.user.id]);
+  res.json(rows[0] || null);
 });
 
-// ── TRIP STATUS — driver starts/ends trip ────────────────────
+// trip status
 router.post('/trip/start', only, async (req, res) => {
   try {
     const { schedule_id } = req.body;
-    // verify this schedule belongs to this driver
+    // shedule for relevant id
     const [rows] = await db.query(
-      'SELECT id FROM schedules WHERE id=? AND driver_id=? AND status="scheduled"',
-      [schedule_id, req.session.user.id]
+      'SELECT id FROM schedules WHERE id=? AND (driver_id=? OR conductor_id=?) AND status="scheduled"',
+      [schedule_id, req.session.user.id, req.session.user.id]
     );
     if (!rows.length) return res.json({ success: false, message: 'Schedule not found or already started.' });
     await db.query('UPDATE schedules SET status="in_progress" WHERE id=?', [schedule_id]);
@@ -86,11 +96,13 @@ router.post('/trip/end', only, async (req, res) => {
   try {
     const { schedule_id } = req.body;
     const [rows] = await db.query(
-      'SELECT id FROM schedules WHERE id=? AND driver_id=? AND status="in_progress"',
-      [schedule_id, req.session.user.id]
+      'SELECT id FROM schedules WHERE id=? AND (driver_id=? OR conductor_id=?) AND status="in_progress"',
+      [schedule_id, req.session.user.id, req.session.user.id]
     );
     if (!rows.length) return res.json({ success: false, message: 'No active trip found.' });
     await db.query('UPDATE schedules SET status="completed" WHERE id=?', [schedule_id]);
     res.json({ success: true });
   } catch(err) { res.json({ success: false, message: err.message }); }
 });
+
+module.exports = router;
