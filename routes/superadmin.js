@@ -163,9 +163,12 @@ router.get('/depots-list', only, async (req,res) => {
   res.json(rows);
 });
 
-module.exports = router;
+
 
 // ── DEPOT-WISE REPORT (PDF) ───────────────────────────────────
+const { drawHeader, sectionTitle, statCards, drawTable, barChart, donutRow, addFooters, COLORS }
+  = require('./pdfHelpers');
+
 router.post('/reports/generate', only, async (req, res) => {
   const { type, depot_id } = req.body;
   const depotFilter = depot_id ? `AND d.id=${db.escape(depot_id)}` : '';
@@ -182,7 +185,7 @@ router.post('/reports/generate', only, async (req, res) => {
     FROM depots d WHERE 1=1 ${depotFilter} ORDER BY d.depot_code`);
 
   const [staff] = await db.query(`
-    SELECT u.first_name, u.last_name, u.email, u.role, u.phone,
+    SELECT u.first_name, u.last_name, u.role, u.phone,
            u.license_id, u.license_expiry, u.working_hours,
            d.depot_code, d.name AS depot_name
     FROM users u LEFT JOIN depots d ON u.depot_id=d.id
@@ -194,86 +197,116 @@ router.post('/reports/generate', only, async (req, res) => {
     FROM buses b LEFT JOIN depots d ON b.depot_id=d.id
     WHERE 1=1 ${busFilter} ORDER BY d.depot_code, b.reg_number`);
 
-  const doc = new PDFDocument({ margin: 50 });
+  const showStaff  = !type || type === 'all_staff'  || type === 'depot_staff'  || type === 'full';
+  const showBuses  = !type || type === 'all_buses'  || type === 'depot_buses'  || type === 'full';
+  const showDepots = !type || type === 'full';
+
+  const totalStaff = staff.length;
+  const totalBuses = depots.reduce((a, d) => a + d.buses, 0);
+  const totalCompleted = depots.reduce((a, d) => a + d.completed, 0);
+  const totalTrips = depots.reduce((a, d) => a + d.total_trips, 0);
+  const overallRate = totalTrips > 0 ? Math.round((totalCompleted / totalTrips) * 100) : 0;
+
+  const doc = new PDFDocument({ margin: 45, bufferPages: true, size: 'A4' });
   const fname = `superadmin_report_${Date.now()}.pdf`;
   const fpath = path.join(__dirname, '../public/uploads', fname);
   doc.pipe(fs.createWriteStream(fpath));
 
-  doc.fontSize(20).fillColor('#1e1b4b').text('DTSL — Network-Wide Report', { align: 'center' });
-  doc.moveDown(0.3).fontSize(10).fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-  doc.moveDown().moveTo(50,doc.y).lineTo(550,doc.y).strokeColor('#1e1b4b').stroke().moveDown();
+  // ── HEADER ──
+  drawHeader(doc, 'NETWORK REPORT', `${req.session.user.name} · ${new Date().toLocaleDateString('en-GB')}`);
 
-  // Network totals
-  doc.fontSize(13).fillColor('#1e1b4b').text('Network Summary');
-  doc.fontSize(10).fillColor('#333')
-    .text(`Total Depots: ${depots.length}`)
-    .text(`Total Staff: ${staff.length}`)
-    .text(`Total Buses: ${depots.reduce((a,d)=>a+d.buses,0)}`)
-    .text(`Total Completed Trips: ${depots.reduce((a,d)=>a+d.completed,0)}`);
+  // ── TOP STAT CARDS ──
+  statCards(doc, [
+    { label: 'Depots', value: depots.length, color: COLORS.primary },
+    { label: 'Total Staff', value: totalStaff, color: COLORS.green },
+    { label: 'Total Buses', value: totalBuses, color: COLORS.amber },
+    { label: 'Network Completion', value: overallRate + '%', color: overallRate >= 70 ? COLORS.green : COLORS.amber },
+  ]);
 
-  doc.moveDown().fontSize(13).fillColor('#1e1b4b').text('Depot Breakdown');
-  depots.forEach(d => {
-    const rate = d.total_trips>0?Math.round(d.completed/d.total_trips*100):0;
-    doc.moveDown(0.3).fontSize(11).fillColor('#1a4fa0').text(`${d.depot_code} — ${d.name}`);
-    doc.fontSize(9).fillColor('#333')
-      .text(`  Location: ${d.location||'—'}  |  Status: ${d.status}`)
-      .text(`  Buses: ${d.buses}  |  Staff: ${d.staff}  |  Routes: ${d.routes}  |  Completion Rate: ${rate}%`);
-  });
+  // ── DEPOT BREAKDOWN — ONCE, with donut comparison + table (bug fix: no duplication) ──
+  if (showDepots && depots.length) {
+    sectionTitle(doc, 'Depot Completion Rate Comparison');
+    donutRow(doc, depots.map(d => ({
+      label: d.depot_code,
+      value: d.total_trips > 0 ? Math.round((d.completed / d.total_trips) * 100) : 0
+    })));
 
-  doc.moveDown().fontSize(13).fillColor('#1e1b4b').text('All Employees (Depot Wise)');
-  let lastDepot = '';
-  staff.forEach(s => {
-    if (s.depot_code !== lastDepot) {
-      doc.moveDown(0.3).fontSize(10).fillColor('#1a4fa0').text(`${s.depot_code} — ${s.depot_name}`);
-      lastDepot = s.depot_code;
-    }
-    const exp = s.license_expiry ? new Date(s.license_expiry).toLocaleDateString('en-GB') : '—';
-    doc.fontSize(8).fillColor('#333')
-      .text(`  ${s.first_name} ${s.last_name} | ${s.role} | ${s.phone||'—'} | License: ${s.license_id||'—'} exp:${exp} | Hours: ${s.working_hours}`);
-  });
-
-  // Section visibility based on type
-  const showStaff  = !type || type==='all_staff'  || type==='depot_staff'  || type==='full';
-  const showBuses  = !type || type==='all_buses'  || type==='depot_buses'  || type==='full';
-  const showDepots = !type || type==='full';
-
-  if(showDepots){
-    doc.moveDown().fontSize(13).fillColor('#1e1b4b').text('Depot Breakdown');
-    depots.forEach(d => {
-      const rate = d.total_trips>0?Math.round(d.completed/d.total_trips*100):0;
-      doc.moveDown(0.3).fontSize(11).fillColor('#1a4fa0').text(`${d.depot_code} — ${d.name}`);
-      doc.fontSize(9).fillColor('#333')
-        .text(`  Location: ${d.location||'—'}  |  Status: ${d.status}  |  Buses: ${d.buses}  |  Staff: ${d.staff}  |  Completion: ${rate}%`);
-    });
+    sectionTitle(doc, 'Depot Overview');
+    drawTable(doc,
+      [
+        { key: 'depot_code', label: 'Code', width: 0.16 },
+        { key: 'name', label: 'Depot Name', width: 0.30 },
+        { key: 'status', label: 'Status', width: 0.16 },
+        { key: 'buses', label: 'Buses', width: 0.12, align: 'right' },
+        { key: 'staff', label: 'Staff', width: 0.12, align: 'right' },
+        { key: 'routes', label: 'Routes', width: 0.14, align: 'right' },
+      ],
+      depots
+    );
   }
 
-  if(showStaff && staff.length){
-    doc.moveDown().fontSize(13).fillColor('#1e1b4b').text('Employee Details');
-    let lastDepot='';
-    staff.forEach(s=>{
-      if(s.depot_code!==lastDepot){
-        doc.moveDown(0.3).fontSize(10).fillColor('#1a4fa0').text(`${s.depot_code} — ${s.depot_name}`);
-        lastDepot=s.depot_code;
+  // ── STAFF (grouped by depot, one table per depot with header) ──
+  if (showStaff && staff.length) {
+    sectionTitle(doc, 'Employee Directory');
+    let currentDepot = null;
+    let groupRows = [];
+    const flushGroup = () => {
+      if (!groupRows.length) return;
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORS.primary).text(currentDepot, { continued: false });
+      doc.moveDown(0.3);
+      drawTable(doc,
+        [
+          { key: 'name', label: 'Name', width: 0.28 },
+          { key: 'role', label: 'Role', width: 0.16 },
+          { key: 'phone', label: 'Phone', width: 0.18 },
+          { key: 'license_id', label: 'License', width: 0.18, format: v => v || '—' },
+          { key: 'expiry', label: 'Expiry', width: 0.20 },
+        ],
+        groupRows,
+        { rowHeight: 18 }
+      );
+      groupRows = [];
+    };
+    staff.forEach(s => {
+      const depotLabel = `${s.depot_code} — ${s.depot_name}`;
+      if (depotLabel !== currentDepot) {
+        flushGroup();
+        currentDepot = depotLabel;
       }
-      const exp=s.license_expiry?new Date(s.license_expiry).toLocaleDateString('en-GB'):'—';
-      doc.fontSize(8).fillColor('#333')
-        .text(`  ${s.first_name} ${s.last_name} | ${s.role} | ${s.phone||'—'} | License: ${s.license_id||'—'} exp:${exp} | Hours: ${s.working_hours}`);
+      groupRows.push({
+        name: `${s.first_name} ${s.last_name}`,
+        role: s.role,
+        phone: s.phone || '—',
+        license_id: s.license_id,
+        expiry: s.license_expiry ? new Date(s.license_expiry).toLocaleDateString('en-GB') : '—',
+      });
     });
+    flushGroup();
   }
 
-  if(showBuses && buses.length){
-    doc.moveDown().fontSize(13).fillColor('#1e1b4b').text('Bus Fleet');
-    let lastDepot='';
-    buses.forEach(b=>{
-      if(b.depot_code!==lastDepot){
-        doc.moveDown(0.3).fontSize(10).fillColor('#1a4fa0').text(`${b.depot_code} — ${b.depot_name}`);
-        lastDepot=b.depot_code;
-      }
-      doc.fontSize(8).fillColor('#333')
-        .text(`  ${b.reg_number} | Capacity: ${b.capacity} | Status: ${b.status} | Mileage: ${parseFloat(b.mileage).toLocaleString()} km`);
-    });
+  // ── BUSES (grouped by depot) ──
+  if (showBuses && buses.length) {
+    sectionTitle(doc, 'Bus Fleet');
+    drawTable(doc,
+      [
+        { key: 'reg_number', label: 'Reg. Number', width: 0.20 },
+        { key: 'depot_code', label: 'Depot', width: 0.18, format: v => v || '—' },
+        { key: 'capacity', label: 'Capacity', width: 0.16, align: 'right' },
+        {
+          key: 'status', label: 'Status', width: 0.20,
+          color: (row) => row.status === 'active' ? COLORS.green : row.status === 'maintenance' ? COLORS.amber : COLORS.gray,
+          format: v => v.toUpperCase()
+        },
+        { key: 'mileage', label: 'Mileage (km)', width: 0.26, align: 'right', format: v => parseFloat(v).toLocaleString() },
+      ],
+      buses
+    );
   }
 
+  addFooters(doc, req.session.user.name);
   doc.end();
+
   res.json({ success: true, file: '/uploads/' + fname });
 });
+
+module.exports = router;

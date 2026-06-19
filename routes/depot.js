@@ -12,7 +12,7 @@ function depotOnly(req,res,next){
 const did = req => req.session.user.depot_id;
 const fmtDT = d => new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 
-// ── STATS ─────────────────────────────────────────────────────
+// Stats
 router.get('/stats', depotOnly, async (req,res) => {
   const [[{buses}]]  = await db.query('SELECT COUNT(*) AS buses FROM buses WHERE depot_id=? AND status="active"',[did(req)]);
   const [[{routes}]] = await db.query('SELECT COUNT(*) AS routes FROM routes WHERE depot_id=? AND status="active"',[did(req)]);
@@ -43,7 +43,7 @@ router.get('/stats', depotOnly, async (req,res) => {
   res.json({stats:{buses,routes,staff,trips,completed_today,delayed,utilRate},recent,licAlerts});
 });
 
-// ── STAFF (read only — assigned by superadmin) ────────────────
+// Staff assigned by supa 
 router.get('/staff', depotOnly, async (req,res) => {
   const [rows] = await db.query(`
     SELECT u.*,b.reg_number AS assigned_bus FROM users u
@@ -53,7 +53,7 @@ router.get('/staff', depotOnly, async (req,res) => {
   res.json(rows);
 });
 
-// ── BUSES (read only — assigned by superadmin, depot marks maintenance) ──
+// busses added by supa
 router.get('/buses', depotOnly, async (req,res) => {
   const [rows] = await db.query(`
     SELECT b.*,r.name AS route_name FROM buses b
@@ -62,7 +62,7 @@ router.get('/buses', depotOnly, async (req,res) => {
   res.json(rows);
 });
 
-// depot admin can change bus status (active/maintenance/retired)
+// depo change bus status
 router.patch('/buses/:id/status', depotOnly, async (req,res) => {
   const {status} = req.body;
   // verify bus belongs to this depot
@@ -76,7 +76,7 @@ router.patch('/buses/:id/status', depotOnly, async (req,res) => {
   res.json({success:true});
 });
 
-// ── ROUTES ────────────────────────────────────────────────────
+// toutes
 router.get('/routes', depotOnly, async (req,res) => {
   const [routes] = await db.query('SELECT * FROM routes WHERE depot_id=? AND status="active" ORDER BY name',[did(req)]);
   for(const r of routes){
@@ -115,7 +115,7 @@ router.delete('/routes/:id', depotOnly, async (req,res) => {
   res.json({success:true});
 });
 
-// ── SCHEDULES ─────────────────────────────────────────────────
+// shedules
 router.get('/schedules', depotOnly, async (req,res) => {
   const {view,date}=req.query;
   let dateFilter=''; const params=[did(req)];
@@ -209,7 +209,7 @@ router.get('/live', depotOnly, async (req,res) => {
   res.json(rows);
 });
 
-// ── MAINTENANCE ───────────────────────────────────────────────
+// maintainance
 router.get('/maintenance', depotOnly, async (req,res) => {
   const [rows] = await db.query(`SELECT m.*,b.reg_number FROM maintenance_logs m
     JOIN buses b ON m.bus_id=b.id WHERE b.depot_id=? ORDER BY m.service_date DESC`,[did(req)]);
@@ -235,7 +235,7 @@ router.post('/maintenance', depotOnly, async (req,res) => {
   res.json({success:true});
 });
 
-// ── EXPENSES ─────────────────────────────────────────────────
+// expemses
 router.get('/expenses', depotOnly, async (req,res) => {
   const [rows] = await db.query(`
     SELECT e.*,CONCAT(u.first_name,' ',u.last_name) AS staff_name,b.reg_number
@@ -267,7 +267,7 @@ router.get('/expenses/fuel-trend', depotOnly, async (req,res) => {
   res.json(rows);
 });
 
-// ── ANALYTICS ────────────────────────────────────────────────
+// nalysis
 router.get('/analytics/completion', depotOnly, async (req,res) => {
   const [rows] = await db.query(`
     SELECT r.name AS route_name,COUNT(s.id) AS total,
@@ -287,38 +287,127 @@ router.get('/analytics/utilisation', depotOnly, async (req,res) => {
   res.json(rows);
 });
 
-// ── REPORTS ──────────────────────────────────────────────────
+// report part
+const { drawHeader, sectionTitle, statCards, drawTable, barChart, donutRow, addFooters, COLORS }
+  = require('./pdfHelpers');
+
 router.post('/reports/generate', depotOnly, async (req,res) => {
-  const {type,period}=req.body;
+  const {type,period,bus_id}=req.body;
   let dateFilter='';
   if(period==='week') dateFilter='AND s.departure_time>=DATE_SUB(NOW(),INTERVAL 7 DAY)';
   if(period==='month')dateFilter='AND s.departure_time>=DATE_SUB(NOW(),INTERVAL 30 DAY)';
+  let busFilter=bus_id?'AND b.id=?':'';
+  let busFilterParams=bus_id?[did(req),bus_id]:[did(req)];
+  
+  // Filter expenses by category based on report type
+  let categoryFilter='';
+  if(type==='fuel') categoryFilter='AND e.category="fuel"';
+
   const [scheds] = await db.query(`
-    SELECT s.*,r.name AS route_name,b.reg_number,CONCAT(u.first_name,' ',u.last_name) AS driver_name
+    SELECT s.*,r.name AS route_name,b.reg_number,
+           CONCAT(u.first_name,' ',u.last_name) AS driver_name,
+           CONCAT(c.first_name,' ',c.last_name) AS conductor_name
     FROM schedules s JOIN routes r ON s.route_id=r.id
     JOIN buses b ON s.bus_id=b.id JOIN users u ON s.driver_id=u.id
-    WHERE b.depot_id=? ${dateFilter} ORDER BY s.departure_time DESC LIMIT 100`,[did(req)]);
-  const completed=scheds.filter(s=>s.status==='completed').length;
-  const rate=scheds.length>0?Math.round(completed/scheds.length*100):0;
-  const doc=new PDFDocument({margin:50});
-  const fname=`report_depot${did(req)}_${type}_${Date.now()}.pdf`;
-  const fpath=path.join(__dirname,'../public/uploads',fname);
-  doc.pipe(fs.createWriteStream(fpath));
-  doc.fontSize(20).fillColor('#1a4fa0').text(`DTSL — ${req.session.user.name} — ${type.toUpperCase()} REPORT`,{align:'center'});
-  doc.moveDown(0.3).fontSize(10).fillColor('#666').text(`Generated: ${new Date().toLocaleString()} | Period: ${period||'All time'}`,{align:'center'});
-  doc.moveDown().moveTo(50,doc.y).lineTo(550,doc.y).strokeColor('#1a4fa0').stroke().moveDown();
-  doc.fontSize(12).fillColor('#1a4fa0').text('Summary');
-  doc.fontSize(10).fillColor('#333').text(`Total Schedules: ${scheds.length}`).text(`Completed: ${completed}`).text(`Completion Rate: ${rate}%`);
-  doc.moveDown().fontSize(12).fillColor('#1a4fa0').text('Schedule Detail');
-  doc.fontSize(8).fillColor('#333');
-  scheds.forEach(s=>{
-    const del=s.status==='in_progress'&&new Date(s.arrival_time)<new Date()?'[DELAYED]':'';
-    doc.text(`${s.route_name} | ${s.reg_number} | ${s.driver_name} | ${fmtDT(s.departure_time)} | ${s.status} ${del}`);
-  });
-  doc.end();
-  await db.query('INSERT INTO reports (user_id,depot_id,type,export_path) VALUES (?,?,?,?)',
-    [req.session.user.id,did(req),type,'/uploads/'+fname]);
-  res.json({success:true,file:'/uploads/'+fname});
-});
+    LEFT JOIN users c ON s.conductor_id=c.id
+    WHERE b.depot_id=? ${busFilter} ${dateFilter} ORDER BY s.departure_time DESC LIMIT 100`,busFilterParams);
 
+  const [expSummary] = await db.query(`
+    SELECT b.reg_number, SUM(e.amount) AS total,
+           SUM(CASE WHEN e.category='fuel' THEN e.amount ELSE 0 END) AS fuel
+    FROM buses b
+    LEFT JOIN schedules s ON s.bus_id=b.id
+    LEFT JOIN expense_receipts e ON e.schedule_id=s.id
+    WHERE b.depot_id=? ${busFilter} ${categoryFilter} GROUP BY b.id,b.reg_number ORDER BY total DESC LIMIT 8`,busFilterParams);
+
+  const [routePerf] = await db.query(`
+    SELECT r.name AS route_name, COUNT(s.id) AS total,
+           SUM(CASE WHEN s.status='completed' THEN 1 ELSE 0 END) AS completed
+    FROM routes r LEFT JOIN schedules s ON s.route_id=r.id
+    LEFT JOIN buses b ON s.bus_id=b.id
+    WHERE r.depot_id=? ${busFilter} GROUP BY r.id,r.name HAVING total>0 ORDER BY total DESC LIMIT 8`,busFilterParams);
+
+  const completed = scheds.filter(s => s.status === 'completed').length;
+  const delayedCount = scheds.filter(s => s.status === 'in_progress' && new Date(s.arrival_time) < new Date()).length;
+  const rate = scheds.length > 0 ? Math.round((completed / scheds.length) * 100) : 0;
+  const totalExpense = expSummary.reduce((a, b) => a + parseFloat(b.total || 0), 0);
+
+  const doc = new PDFDocument({ margin: 45, bufferPages: true, size: 'A4' });
+  const fname = `report_depot${did(req)}_${type}_${Date.now()}.pdf`;
+  const fpath = path.join(__dirname, '../public/uploads', fname);
+  doc.pipe(fs.createWriteStream(fpath));
+
+  //  HEADER 
+  drawHeader(doc, `${type.toUpperCase()} REPORT`, `${req.session.user.name} · ${new Date().toLocaleDateString('en-GB')}`);
+
+  //  STAT CARDS 
+  statCards(doc, [
+    { label: 'Total Trips', value: scheds.length, color: COLORS.primary },
+    { label: 'Completed', value: completed, color: COLORS.green },
+    { label: 'Completion Rate', value: rate + '%', color: rate >= 70 ? COLORS.green : rate >= 40 ? COLORS.amber : COLORS.red },
+    { label: 'Delayed', value: delayedCount, color: COLORS.red },
+    { label: 'Total Expenses', value: 'Rs ' + Math.round(totalExpense / 1000) + 'k', color: COLORS.amber },
+  ]);
+
+  // Route performance
+  if (routePerf.length) {
+    sectionTitle(doc, 'Route Performance — Trips Completed');
+    barChart(doc, routePerf.map(r => ({
+      label: r.route_name.length > 22 ? r.route_name.slice(0, 20) + '…' : r.route_name,
+      value: r.completed,
+      color: COLORS.primary
+    })), { maxValue: Math.max(...routePerf.map(r => r.total)) });
+  }
+
+  // expence table
+  if (expSummary.length) {
+    const expenseTitle = type === 'fuel' ? 'Fuel Consumption per Bus' : 'Expense Summary per Bus';
+    sectionTitle(doc, expenseTitle);
+    const expenseColumns = type === 'fuel' 
+      ? [
+          { key: 'reg_number', label: 'Bus', width: 0.4 },
+          { key: 'fuel', label: 'Fuel (LKR)', width: 0.6, align: 'right', format: v => 'Rs ' + parseFloat(v || 0).toLocaleString() },
+        ]
+      : [
+          { key: 'reg_number', label: 'Bus', width: 0.3 },
+          { key: 'fuel', label: 'Fuel (LKR)', width: 0.35, align: 'right', format: v => 'Rs ' + parseFloat(v || 0).toLocaleString() },
+          { key: 'total', label: 'Total (LKR)', width: 0.35, align: 'right', format: v => 'Rs ' + parseFloat(v || 0).toLocaleString() },
+        ];
+    drawTable(doc, expenseColumns, expSummary);
+  }
+
+  // shedule tables
+  sectionTitle(doc, 'Schedule Detail');
+  drawTable(doc,
+    [
+      { key: 'route_name', label: 'Route', width: 0.26 },
+      { key: 'reg_number', label: 'Bus', width: 0.12 },
+      { key: 'driver_name', label: 'Driver', width: 0.18 },
+      { key: 'conductor_name', label: 'Conductor', width: 0.18, format: v => v || '—' },
+      { key: 'departure_time', label: 'Departure', width: 0.16, format: v => new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) },
+      {
+        key: 'status', label: 'Status', width: 0.10,
+        color: (row) => {
+          const isDelayed = row.status === 'in_progress' && new Date(row.arrival_time) < new Date();
+          if (isDelayed) return COLORS.red;
+          if (row.status === 'completed') return COLORS.green;
+          if (row.status === 'cancelled') return COLORS.gray;
+          return COLORS.primary;
+        },
+        format: (v, row) => {
+          const isDelayed = row.status === 'in_progress' && new Date(row.arrival_time) < new Date();
+          return isDelayed ? 'DELAYED' : v.toUpperCase();
+        }
+      },
+    ],
+    scheds
+  );
+
+  addFooters(doc, req.session.user.name);
+  doc.end();
+
+  await db.query('INSERT INTO reports (user_id,depot_id,type,export_path) VALUES (?,?,?,?)',
+    [req.session.user.id, did(req), type, '/uploads/' + fname]);
+  res.json({ success: true, file: '/uploads/' + fname });
+});
 module.exports = router;

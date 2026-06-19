@@ -7,7 +7,7 @@ function nav(id,el){
   document.getElementById('s-'+id).classList.remove('hidden');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
-  ({dashboard:loadDash,depots:loadDepots,staff:loadStaff,buses:loadBuses})[id]();
+  ({dashboard:loadDash,depots:loadDepots,staff:loadStaff,buses:loadBuses,reports:loadReports})[id]();
 }
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
@@ -245,6 +245,12 @@ async function genReport(){
   if(res.success){
     document.getElementById('rep-link').classList.remove('hidden');
     document.getElementById('rep-a').href=res.file;
+    document.getElementById('rep-a').onclick=function(e){
+      e.preventDefault();
+      window.open(this.href,'_blank');
+      loadReports();
+      return false;
+    };
     document.getElementById('rep-a').textContent='Download PDF Report';
   } else {
     alert('Failed to generate report.');

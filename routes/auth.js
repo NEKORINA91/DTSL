@@ -7,7 +7,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, depot_code, password } = req.body;
 
-    // ── DEPOT LOGIN (depot_code + password) ──────────
+    // depo login
     if (depot_code) {
       const [rows] = await db.query(
         'SELECT * FROM depots WHERE depot_code=? AND status != "inactive"',
@@ -21,7 +21,7 @@ router.post('/login', async (req, res) => {
       return res.json({ success:true, redirect:'/depot' });
     }
 
-    // ── EMAIL LOGIN (superadmin / driver / conductor) ─
+    // Login
     const [rows] = await db.query(
       'SELECT * FROM users WHERE email=? AND status="active"', [email]
     );

@@ -433,7 +433,7 @@ async function saveSched(){
     closeModal('m-sched'); q('sc-id').value=''; loadScheds();
   }
 }
-async function updateSched(id,status){await api('/api/depot/schedules/'+id,'PATCH',{status});}
+async function updateSched(id,status){await api('/api/depot/schedules/'+id,'PATCH',{status}); loadScheds();}
 async function delSched(id){
   if(!confirm('Delete this schedule?'))return;
   await api('/api/depot/schedules/'+id,'DELETE'); loadScheds();
@@ -629,7 +629,11 @@ async function genReport(){
   const [scheds,expSum]=await Promise.all([api('/api/depot/schedules'),api('/api/depot/expenses/summary')]);
   const filtered=busId?scheds.filter(s=>s.bus_id==busId):scheds;
   const expFiltered=busId?expSum.filter(e=>e.id==busId):expSum;
-  const totalExp=expFiltered.reduce((a,b)=>a+parseFloat(b.total||0),0);
+  
+  // Filter expenses by type: fuel reports show only fuel, others show total
+  const expenseKey=type==='fuel'?'fuel':'total';
+  const totalExp=expFiltered.reduce((a,b)=>a+parseFloat(b[expenseKey]||0),0);
+  
   const completed=filtered.filter(s=>s.status==='completed').length;
   const delayed=filtered.filter(s=>s.is_delayed).length;
   const completionRate=filtered.length>0?Math.round((completed/filtered.length)*100):0;
@@ -646,16 +650,22 @@ async function genReport(){
         <div style="background:#eef2ff;border-radius:.5rem;padding:.75rem;text-align:center"><p style="font-size:1.5rem;font-weight:800;color:#4f46e5;margin:0">${filtered.length}</p><p style="font-size:.65rem;color:#6b7280;margin:.15rem 0 0">Total Trips</p></div>
         <div style="background:#f0fdf4;border-radius:.5rem;padding:.75rem;text-align:center"><p style="font-size:1.5rem;font-weight:800;color:#16a34a;margin:0">${completed}</p><p style="font-size:.65rem;color:#6b7280;margin:.15rem 0 0">Completed</p></div>
         <div style="background:#fffbeb;border-radius:.5rem;padding:.75rem;text-align:center"><p style="font-size:1.5rem;font-weight:800;color:#d97706;margin:0">${completionRate}%</p><p style="font-size:.65rem;color:#6b7280;margin:.15rem 0 0">Completion Rate</p></div>
-        <div style="background:#fff7ed;border-radius:.5rem;padding:.75rem;text-align:center"><p style="font-size:1rem;font-weight:800;color:#c2410c;margin:0">LKR ${totalExp.toLocaleString()}</p><p style="font-size:.65rem;color:#6b7280;margin:.15rem 0 0">Total Expenses</p></div>
+        <div style="background:#fff7ed;border-radius:.5rem;padding:.75rem;text-align:center"><p style="font-size:1rem;font-weight:800;color:#c2410c;margin:0">LKR ${totalExp.toLocaleString()}</p><p style="font-size:.65rem;color:#6b7280;margin:.15rem 0 0">${type==='fuel'?'Fuel':'Total'} Expenses</p></div>
       </div>
       ${delayed>0?`<div style="background:#fee2e2;border-radius:.5rem;padding:.5rem .875rem;font-size:.78rem;color:#dc2626;margin-bottom:.75rem;font-weight:600">⚠️ ${delayed} delayed trip${delayed>1?'s':''} detected in this period</div>`:''}
-      <p style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.5rem">Expense by Bus</p>
-      ${expFiltered.map(b=>`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:.4rem 0;border-bottom:1px solid #f3f4f6"><span>🚌 ${b.reg_number}</span><span style="font-weight:700">LKR ${parseFloat(b.total||0).toLocaleString()}</span></div>`).join('')}
+      <p style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.5rem">${type==='fuel'?'Fuel':'Expense'} by Bus</p>
+      ${expFiltered.map(b=>`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:.4rem 0;border-bottom:1px solid #f3f4f6"><span>🚌 ${b.reg_number}</span><span style="font-weight:700">LKR ${parseFloat(b[expenseKey]||0).toLocaleString()}</span></div>`).join('')}
     </div>`;
   const res=await api('/api/depot/reports/generate','POST',{type,bus_id:busId||null,period});
   if(res.success){
     q('rep-link').classList.remove('hidden');
     q('rep-a').href=res.file;
+    q('rep-a').onclick=function(e){
+      e.preventDefault();
+      window.open(this.href,'_blank');
+      loadReports();
+      return false;
+    };
     q('rep-a').textContent='Download PDF Report';
   }
 }
