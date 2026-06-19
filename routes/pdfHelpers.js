@@ -17,7 +17,7 @@ const PAGE_MARGIN = 45;
 const PAGE_WIDTH  = 595.28; // A4 width in points
 const CONTENT_W   = PAGE_WIDTH - PAGE_MARGIN * 2;
 
-/* ── HEADER / TITLE BAR ──────────────────────────────────────── */
+// header
 function drawHeader(doc, title, subtitle) {
   const y = doc.y;
   // colored title bar
@@ -34,7 +34,7 @@ function drawHeader(doc, title, subtitle) {
   doc.fillColor(COLORS.text);
 }
 
-/* ── SECTION LABEL ───────────────────────────────────────────── */
+// selection
 function sectionTitle(doc, text) {
   doc.moveDown(0.3);
   const y = doc.y;
@@ -45,7 +45,7 @@ function sectionTitle(doc, text) {
   doc.fillColor(COLORS.text).font('Helvetica');
 }
 
-/* ── STAT CARDS ROW ──────────────────────────────────────────── */
+// stats
 // stats: [{label, value, color}]
 function statCards(doc, stats) {
   const gap = 8;
@@ -63,9 +63,7 @@ function statCards(doc, stats) {
   doc.y = y + cardH + 16;
 }
 
-/* ── TABLE ───────────────────────────────────────────────────── */
-// columns: [{key, label, width(0-1 fraction), align}]
-// rows: array of objects
+
 function drawTable(doc, columns, rows, opts = {}) {
   const rowH = opts.rowHeight || 20;
   const headerH = 22;
@@ -112,8 +110,7 @@ function drawTable(doc, columns, rows, opts = {}) {
   doc.y += 14;
 }
 
-/* ── HORIZONTAL BAR CHART ────────────────────────────────────── */
-// items: [{label, value, color}]  maxValue optional
+
 function barChart(doc, items, opts = {}) {
   if (!items.length) return;
   const maxVal = opts.maxValue || Math.max(...items.map(i => i.value), 1);
@@ -139,8 +136,7 @@ function barChart(doc, items, opts = {}) {
   doc.y += 6;
 }
 
-/* ── DONUT / PROGRESS RING ───────────────────────────────────── */
-// value 0-100, used for completion rates etc
+
 function donutChart(doc, x, y, radius, value, opts = {}) {
   const color = opts.color || (value >= 70 ? COLORS.green : value >= 40 ? COLORS.amber : COLORS.red);
   const lineWidth = opts.lineWidth || 8;
@@ -153,8 +149,7 @@ function donutChart(doc, x, y, radius, value, opts = {}) {
   doc.strokeColor(COLORS.grayLight);
   doc.circle(x, y, radius).stroke();
 
-  // foreground arc — approximate with path using bezier-ish polyline since pdfkit has no native arc-stroke easily;
-  // pdfkit DOES support .path with arcs via SVG-like commands through `doc.path`
+ 
   const steps = Math.max(Math.round((value / 100) * 60), 1);
   doc.strokeColor(color);
   doc.lineCap('round');
@@ -174,8 +169,7 @@ function donutChart(doc, x, y, radius, value, opts = {}) {
      .text(value + '%', x - radius, y - 7, { width: radius * 2, align: 'center' });
 }
 
-/* ── MULTI DONUT ROW (used for per-depot completion comparison) ─ */
-// items: [{label, value}]
+
 function donutRow(doc, items) {
   const radius = 26;
   const cellW = CONTENT_W / items.length;
@@ -189,7 +183,7 @@ function donutRow(doc, items) {
   doc.y = y + radius + 28;
 }
 
-/* ── BADGE (inline colored pill — drawn, returns nothing, just renders) ─ */
+
 function badge(doc, text, x, y, color) {
   const w = doc.widthOfString(text) + 12;
   doc.roundedRect(x, y, w, 14, 7).fill(color + '22');
@@ -198,7 +192,7 @@ function badge(doc, text, x, y, color) {
   return w;
 }
 
-/* ── FOOTER (page numbers, called after content is done) ────── */
+
 function addFooters(doc, generatedBy) {
   const range = doc.bufferedPageRange();
   for (let i = range.start; i < range.start + range.count; i++) {
