@@ -41,6 +41,181 @@ function fmtDT(d){return d?new Date(d).toLocaleString('en-GB',{day:'2-digit',mon
 function fmtD(d){return d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';}
 function q(id){return document.getElementById(id);}
 
+// Sri Lankan majors for testing
+const CITIES = {
+  colombo:{lat:6.9271,lng:79.8612,label:'Colombo'},
+  kandy:{lat:7.2906,lng:80.6337,label:'Kandy'},
+  galle:{lat:6.0535,lng:80.2210,label:'Galle'},
+  jaffna:{lat:9.6615,lng:80.0255,label:'Jaffna'},
+  trincomalee:{lat:8.5874,lng:81.2152,label:'Trincomalee'},
+  batticaloa:{lat:7.7102,lng:81.6924,label:'Batticaloa'},
+  anuradhapura:{lat:8.3114,lng:80.4037,label:'Anuradhapura'},
+  matara:{lat:5.9485,lng:80.5353,label:'Matara'},
+  kurunegala:{lat:7.4863,lng:80.3647,label:'Kurunegala'},
+  negombo:{lat:7.2083,lng:79.8358,label:'Negombo'},
+  ratnapura:{lat:6.6828,lng:80.3992,label:'Ratnapura'},
+  nuwara_eliya:{lat:6.9497,lng:80.7891,label:'Nuwara Eliya'}
+};
+
+const geocodeCache = {};
+ 
+
+function getCityCoordsLocal(cityName) {
+  if (!cityName) return null;
+  const lower = cityName.toLowerCase().trim().replace(/\s+/g, '_');
+  if (CITIES[lower]) return CITIES[lower];
+  for (let key in CITIES) {
+    if (CITIES[key].label.toLowerCase() === cityName.toLowerCase().trim()) return CITIES[key];
+  }
+  for (let key in CITIES) {
+    if (CITIES[key].label.toLowerCase().includes(cityName.toLowerCase().trim())) return CITIES[key];
+  }
+  return null;
+}
+ 
+
+async function getCityCoords(cityName) {
+  if (!cityName) return null;
+  const trimmed = cityName.trim();
+ 
+ 
+  const local = getCityCoordsLocal(trimmed);
+  if (local) return local;
+ 
+  
+  const cacheKey = trimmed.toLowerCase();
+  if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
+ 
+  
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=lk&q=${encodeURIComponent(trimmed)}`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (data && data.length) {
+      const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: trimmed };
+      geocodeCache[cacheKey] = result;
+      return result;
+    }
+  } catch (e) {
+    console.warn('Geocoding failed for', trimmed, e);
+  }
+  return null;
+}
+
+let routeMapViewer=null;
+
+function viewRouteMap(originName,destName,routeName){
+  openModal('m-routemap');
+  setTimeout(async ()=>{                                    // ← add async
+    if(!routeMapViewer){
+      routeMapViewer=L.map('route-map-viewer').setView([7.8731,80.7718],7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'© OpenStreetMap',maxZoom:19
+      }).addTo(routeMapViewer);
+    }
+    routeMapViewer.eachLayer(l=>{
+      if(l instanceof L.Marker||l instanceof L.Polyline||l instanceof L.CircleMarker)routeMapViewer.removeLayer(l);
+    });
+    q('map-title').textContent='Route: '+routeName;
+    q('map-info').innerHTML='Looking up locations…';         
+    const originCoord=await getCityCoords(originName);         
+    const destCoord=await getCityCoords(destName);             
+ 
+    if(originCoord&&destCoord){
+      const originMarker=L.circleMarker([originCoord.lat,originCoord.lng],{radius:8,fillColor:'#22c55e',color:'#16a34a',weight:2,opacity:1,fillOpacity:0.8})
+        .addTo(routeMapViewer).bindPopup('Origin: '+originCoord.label);
+      const destMarker=L.circleMarker([destCoord.lat,destCoord.lng],{radius:8,fillColor:'#ef4444',color:'#dc2626',weight:2,opacity:1,fillOpacity:0.8})
+        .addTo(routeMapViewer).bindPopup('Destination: '+destCoord.label);
+      const line=L.polyline([[originCoord.lat,originCoord.lng],[destCoord.lat,destCoord.lng]],{color:'#3b82f6',weight:3,dashArray:'5,5'}).addTo(routeMapViewer);
+      const group=L.featureGroup([originMarker,destMarker,line]);
+      routeMapViewer.fitBounds(group.getBounds().pad(0.1));
+      q('map-info').innerHTML='<strong>'+originCoord.label+'</strong> → <strong>'+destCoord.label+'</strong>';
+    }else{
+      q('map-info').innerHTML=' Location not found: '+originName+' or '+destName;
+    }
+    routeMapViewer.invalidateSize();
+  },300);
+}
+
+
+let routeFormMap = null;
+let routeFormOriginMarker = null;
+let routeFormDestMarker = null;
+let routeFormLine = null;
+
+// min map
+async function updateRouteFormMap() {                       
+  const originInput = q('rm-orig').value.trim();
+  const destInput = q('rm-dest').value.trim();
+  const mapBox = q('rm-map-box');
+  if (!mapBox) return;
+ 
+  if (!routeFormMap) {
+    routeFormMap = L.map('rm-map-box', { zoomControl: true, attributionControl: false })
+      .setView([7.8731, 80.7718], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+      .addTo(routeFormMap);
+  }
+  setTimeout(() => routeFormMap.invalidateSize(), 50);
+ 
+  if (routeFormOriginMarker) { routeFormMap.removeLayer(routeFormOriginMarker); routeFormOriginMarker = null; }
+  if (routeFormDestMarker)   { routeFormMap.removeLayer(routeFormDestMarker);   routeFormDestMarker = null; }
+  if (routeFormLine)         { routeFormMap.removeLayer(routeFormLine);         routeFormLine = null; }
+ 
+  const originCoord = await getCityCoords(originInput);     // ← add await
+  const destCoord = await getCityCoords(destInput);          // ← add await
+ 
+  const layers = [];
+  if (originCoord) {
+    routeFormOriginMarker = L.circleMarker([originCoord.lat, originCoord.lng], {
+      radius: 8, fillColor: '#22c55e', color: '#16a34a', weight: 2, opacity: 1, fillOpacity: 0.85
+    }).addTo(routeFormMap).bindTooltip('Origin: ' + originCoord.label);
+    layers.push(routeFormOriginMarker);
+  }
+  if (destCoord) {
+    routeFormDestMarker = L.circleMarker([destCoord.lat, destCoord.lng], {
+      radius: 8, fillColor: '#ef4444', color: '#dc2626', weight: 2, opacity: 1, fillOpacity: 0.85
+    }).addTo(routeFormMap).bindTooltip('Destination: ' + destCoord.label);
+    layers.push(routeFormDestMarker);
+  }
+  if (originCoord && destCoord) {
+    routeFormLine = L.polyline(
+      [[originCoord.lat, originCoord.lng], [destCoord.lat, destCoord.lng]],
+      { color: '#3b82f6', weight: 3, dashArray: '5,5' }
+    ).addTo(routeFormMap);
+    layers.push(routeFormLine);
+  }
+ 
+  const statusEl = q('rm-map-status');
+  if (layers.length) {
+    const group = L.featureGroup(layers);
+    routeFormMap.fitBounds(group.getBounds().pad(0.35));
+    if (statusEl) {
+      statusEl.textContent = originCoord && destCoord
+        ? `${originCoord.label} → ${destCoord.label}`
+        : originCoord ? `Origin found: ${originCoord.label} — waiting for destination`
+        : `Destination found: ${destCoord.label} — waiting for origin`;
+      statusEl.style.color = '#16a34a';
+    }
+  } else {
+    routeFormMap.setView([7.8731, 80.7718], 7);
+    if (statusEl) {
+      statusEl.textContent = originInput || destInput
+        ? 'Searching… (type a real Sri Lankan place name)'
+        : 'Type origin and destination to preview on map';
+      statusEl.style.color = '#9ca3af';
+    }
+  }
+}
+
+// Click a city button to quickly fill the field 
+function pickCityFor(field, cityKey) {
+  const city = CITIES[cityKey];
+  if (!city) return;
+  q(field === 'origin' ? 'rm-orig' : 'rm-dest').value = city.label;
+  updateRouteFormMap();
+}
+
 // Calendar Feature
 function renderCal(){
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -107,27 +282,31 @@ async function loadDash(){
   renderCal();
 
   async function renderUtilChart() {
-  const data = await api('/api/admin/analytics/utilisation');
-  if (!data.length) return;
-  const wrap = document.getElementById('util-chart-wrap');
-  if (!wrap) return;
-  wrap.innerHTML = `
-    <div class="card p-5 mb-5">
-      <p class="font-bold text-gray-700 mb-4">Vehicle Utilisation Rate</p>
-      ${data.slice(0, 8).map(b => {
-        const rate = b.total_trips > 0 ? Math.round((b.completed / b.total_trips) * 100) : 0;
-        const color = rate >= 70 ? '#16a34a' : rate >= 40 ? '#d97706' : '#dc2626';
-        return `<div style="margin-bottom:.65rem">
-          <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.2rem">
-            <span style="font-weight:600;color:#374151">🚌 ${b.reg_number}</span>
-            <span style="font-weight:700;color:${color}">${rate}% (${b.completed}/${b.total_trips} trips)</span>
-          </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden">
-            <div style="height:100%;width:${rate}%;background:${color};border-radius:4px;transition:width .4s"></div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
+  try {
+    const data = await api('/api/admin/analytics/utilisation');
+    if (!data || !data.length) return;
+    const wrap = document.getElementById('util-chart-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = `
+      <div class="card p-5 mb-5">
+        <p class="font-bold text-gray-700 mb-4">Vehicle Utilisation Rate</p>
+        ${data.slice(0, 8).map(b => {
+          const rate = b.total_trips > 0 ? Math.round((b.completed / b.total_trips) * 100) : 0;
+          const color = rate >= 70 ? '#16a34a' : rate >= 40 ? '#d97706' : '#dc2626';
+          return `<div style="margin-bottom:.65rem">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.2rem">
+              <span style="font-weight:600;color:#374151">🚌 ${b.reg_number}</span>
+              <span style="font-weight:700;color:${color}">${rate}% (${b.completed}/${b.total_trips} trips)</span>
+            </div>
+            <div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden">
+              <div style="height:100%;width:${rate}%;background:${color};border-radius:4px;transition:width .4s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch (e) {
+    console.log('Analytics endpoint not available');
+  }
 }
 renderUtilChart();
 
@@ -296,6 +475,7 @@ function editRoute(id){
     div.innerHTML=`<input placeholder="Road name" class="inp road-n" value="${o.road_name}"/><input type="number" placeholder="km" class="inp road-d" value="${o.distance}"/><input placeholder="Description" class="inp road-desc" value="${o.description||''}"/>`;
     q('road-rows').appendChild(div);
   });
+  updateRouteFormMap();
   openModal('m-route');
 }
 function addRoadRow(){
@@ -352,7 +532,10 @@ async function refreshSchedView(){
 function setSchedPeriod(p){schedPeriod=p;refreshSchedView();}
 
 function renderScheds(data){
-  q('sched-tbody').innerHTML=data.length?data.map(s=>`<tr>
+  q('sched-tbody').innerHTML=data.length?data.map(s=>{
+    const route=allRoutes.find(r=>r.id===s.route_id);
+    const orig=route?.origin||'—',dest=route?.destination||'—';
+    return `<tr>
     <td style="font-weight:600;font-size:.82rem">${s.route_name}</td>
     <td style="font-size:.82rem">${s.bus_reg}</td>
     <td style="font-size:.82rem">${s.driver_name}<br><span style="font-size:.72rem;color:#6b7280">${s.conductor_name||'—'}</span></td>
@@ -361,11 +544,13 @@ function renderScheds(data){
     <td style="font-size:.78rem">${fmtDT(s.arrival_time)}</td>
     <td>${s.is_delayed?badge('delayed'):badge(s.status)}${s.is_emergency?' <span class="badge b-red">⚠️</span>':''}</td>
     <td style="display:flex;gap:.25rem;align-items:center;">
+      ${route?`<button class="btn btn-blue btn-sm" onclick="viewRouteMap('${orig}','${dest}','${s.route_name}')">🗺</button>`:''}
       <select onchange="updateSched(${s.id},this.value)" class="inp" style="width:110px;font-size:.72rem;padding:.25rem .5rem;">
         ${['scheduled','in_progress','completed','cancelled'].map(st=>`<option value="${st}"${s.status===st?' selected':''}>${st}</option>`).join('')}
       </select>
       <button class="btn btn-red btn-sm" onclick="delSched(${s.id})">Del</button>
-    </td></tr>`).join('')
+    </td></tr>`;
+  }).join('')
   :'<tr><td colspan="8" style="text-align:center;padding:2rem;color:#9ca3af;">No schedules found.</td></tr>';
   renderTimeline(data);
 }
@@ -554,9 +739,17 @@ async function saveMaint(){
 }
 
 // ══ EXPENSES ═════════════════════════════════════════
+let expBusFilterBuilt = false;
+ 
+// ══ EXPENSES ═════════════════════════════════════════
 async function loadExpenses(){
   if(!allBuses.length)allBuses=await api('/api/depot/buses');
-  q('exp-bus-filter').innerHTML='<option value="">All Buses</option>'+allBuses.map(b=>`<option value="${b.id}">${b.reg_number}</option>`).join('');
+ 
+  if(!expBusFilterBuilt){
+    q('exp-bus-filter').innerHTML='<option value="">All Buses</option>'+allBuses.map(b=>`<option value="${b.id}">${b.reg_number}</option>`).join('');
+    expBusFilterBuilt=true;
+  }
+ 
   const busId=q('exp-bus-filter').value;
   const [rows,summary]=await Promise.all([api('/api/depot/expenses'+(busId?'?bus_id='+busId:'')),api('/api/depot/expenses/summary')]);
   allExp=rows;
@@ -587,7 +780,6 @@ function filterExp(){
   const cat=q('exp-cat-filter').value;
   renderExp(allExp.filter(r=>(!v||[r.staff_name,r.notes||''].join(' ').toLowerCase().includes(v))&&(!cat||r.category===cat)));
 }
-
 // Reports
 async function loadReports(){
   if(!allBuses.length)allBuses=await api('/api/depot/buses');

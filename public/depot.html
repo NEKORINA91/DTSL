@@ -139,7 +139,7 @@
 <section id="s-routes" class="hidden">
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-bold text-gray-800">Routes</h2>
-    <button class="btn btn-primary" onclick="openModal('m-route')">+ Add Route</button>
+    <button class="btn btn-primary" onclick="updateRouteFormMap();openModal('m-route')">+ Add Route</button>
   </div>
   <div class="search-bar">
     <input id="route-search" class="inp" placeholder="Search by name, origin or destination..." oninput="filterRoutes()"/>
@@ -366,8 +366,9 @@
     <div class="space-y-3">
       <div><label class="label">Route Name *</label><input id="rm-name" class="inp" placeholder="Colombo — Kandy (A1 Road)"/></div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="label">Origin *</label><input id="rm-orig" class="inp" placeholder="Colombo"/></div>
-        <div><label class="label">Destination *</label><input id="rm-dest" class="inp" placeholder="Kandy"/></div>
+        <div><label class="label">Origin *</label><input id="rm-orig" class="inp" placeholder="Colombo" oninput="updateRouteFormMap()"/></div>
+        <div><label class="label">Destination *</label><input id="rm-dest" class="inp" placeholder="Kandy" oninput="updateRouteFormMap()"/></div>
+
       </div>
       <div><label class="label">Total Distance (km) *</label><input id="rm-dist" type="number" class="inp"/></div>
       <div class="border-t pt-3">
@@ -378,6 +379,13 @@
         <div id="road-rows" class="space-y-2"></div>
       </div>
     </div>
+    
+    <div class="border-t pt-3">
+  <p class="text-sm font-semibold text-gray-700 mb-2">📍 Route Preview <span class="text-gray-400 font-normal">(Cities)</span></p>
+  <div id="rm-map-box" style="height:220px;border:1px solid #e5e7eb;border-radius:8px;background:#f3f4f6"></div>
+  <p id="rm-map-status" style="font-size:.72rem;color:#9ca3af;margin-top:.4rem">Type origin and destination to preview on map</p>
+</div>
+
     <div class="flex gap-3 mt-5">
       <button class="btn btn-primary" onclick="saveRoute()">Save</button>
       <button class="btn btn-gray" onclick="closeModal('m-route')">Cancel</button>
@@ -440,6 +448,20 @@
     <div class="flex gap-3 mt-5">
       <button class="btn btn-primary" onclick="saveMaint()">Save</button>
       <button class="btn btn-gray" onclick="closeModal('m-maint')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE MAP MODAL -->
+<div id="m-routemap" class="modal">
+  <div class="modal-box max-w-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-bold" id="map-title">Route Map</h3>
+      <button onclick="closeModal('m-routemap')" class="text-gray-400 text-xl leading-none">✕</button>
+    </div>
+    <div id="route-map-viewer" style="height:400px;border:1px solid #e5e7eb;border-radius:8px;background:#f3f4f6"></div>
+    <div class="mt-3 text-sm text-gray-600">
+      <p id="map-info"></p>
     </div>
   </div>
 </div>
